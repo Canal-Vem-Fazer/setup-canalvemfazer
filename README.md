@@ -26,7 +26,7 @@ sudo bash setup-vemfazer.sh
 Ou execute diretamente da web:
 
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/SEU_USUARIO/setup-vemfazer/main/setup-vemfazer.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/Canal-Vem-Fazer/setup-canalvemfazer/main/setup-vemfazer.sh)  
 ```
 
 ---
