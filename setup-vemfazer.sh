@@ -37,25 +37,183 @@ BOLD='\033[1m'
 
 # ======================== VARIÁVEIS GLOBAIS ========================
 DOCKER_COMPOSE_DIR="/opt/vemfazer"
+VERSION="1.0.0"
 DOMAIN=""
 EMAIL=""
 TRAEFIK_INSTALLED=false
+ACCEPTED_TERMS=false
 
 # ======================== FUNÇÕES UTILITÁRIAS ========================
 
+print_ascii_verificando() {
+    echo -e "${CYAN}"
+    echo "==================================================================================================="
+    echo "=                                                                                                 ="
+    echo "=        ██╗   ██╗███████╗██████╗ ██╗███████╗██╗ ██████╗ █████╗ ███╗   ██╗██████╗  ██████╗       ="
+    echo "=        ██║   ██║██╔════╝██╔══██╗██║██╔════╝██║██╔════╝██╔══██╗████╗  ██║██╔══██╗██╔═══██╗      ="
+    echo "=        ██║   ██║█████╗  ██████╔╝██║█████╗  ██║██║     ███████║██╔██╗ ██║██║  ██║██║   ██║      ="
+    echo "=        ╚██╗ ██╔╝██╔══╝  ██╔══██╗██║██╔══╝  ██║██║     ██╔══██║██║╚██╗██║██║  ██║██║   ██║      ="
+    echo "=         ╚████╔╝ ███████╗██║  ██║██║██║     ██║╚██████╗██║  ██║██║ ╚████║██████╔╝╚██████╔╝      ="
+    echo "=          ╚═══╝  ╚══════╝╚═╝  ╚═╝╚═╝╚═╝     ╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝  ╚═════╝   ="
+    echo "=                                                                                                 ="
+    echo "==================================================================================================="
+    echo -e "${NC}"
+}
+
+print_ascii_aviso() {
+    echo -e "${YELLOW}"
+    echo "==================================================================================================="
+    echo "=                                                                                                 ="
+    echo "=                       █████╗     ██╗   ██╗    ██╗    ███████╗     ██████╗                        ="
+    echo "=                      ██╔══██╗    ██║   ██║    ██║    ██╔════╝    ██╔═══██╗                       ="
+    echo "=                      ███████║    ██║   ██║    ██║    ███████╗    ██║   ██║                       ="
+    echo "=                      ██╔══██║    ╚██╗ ██╔╝    ██║    ╚════██║    ██║   ██║                       ="
+    echo "=                      ██║  ██║     ╚████╔╝     ██║    ███████║    ╚██████╔╝                       ="
+    echo "=                      ╚═╝  ╚═╝      ╚═══╝      ╚═╝    ╚══════╝     ╚═════╝                      ="
+    echo "=                                                                                                 ="
+    echo "==================================================================================================="
+    echo -e "${NC}"
+}
+
+print_ascii_iniciando() {
+    echo -e "${GREEN}"
+    echo "==================================================================================================="
+    echo "=                                                                                                 ="
+    echo "=                   ██╗███╗   ██╗██╗ ██████╗██╗ █████╗ ███╗   ██╗██████╗  ██████╗                 ="
+    echo "=                   ██║████╗  ██║██║██╔════╝██║██╔══██╗████╗  ██║██╔══██╗██╔═══██╗                ="
+    echo "=                   ██║██╔██╗ ██║██║██║     ██║███████║██╔██╗ ██║██║  ██║██║   ██║                ="
+    echo "=                   ██║██║╚██╗██║██║██║     ██║██╔══██║██║╚██╗██║██║  ██║██║   ██║                ="
+    echo "=                   ██║██║ ╚████║██║╚██████╗██║██║  ██║██║ ╚████║██████╔╝╚██████╔╝                ="
+    echo "=                   ╚═╝╚═╝  ╚═══╝╚═╝ ╚═════╝╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝  ╚═════╝             ="
+    echo "=                                              v. ${VERSION}                                      ="
+    echo "=                                                                                                 ="
+    echo "==================================================================================================="
+    echo -e "${NC}"
+}
+
+print_ascii_setup() {
+    echo -e "${BLUE}"
+    echo "       ███████╗███████╗████████╗██╗   ██╗██████╗     ██╗   ██╗███████╗███╗   ███╗"
+    echo "       ██╔════╝██╔════╝╚══██╔══╝██║   ██║██╔══██╗    ██║   ██║██╔════╝████╗ ████║"
+    echo "       ███████╗█████╗     ██║   ██║   ██║██████╔╝    ██║   ██║█████╗  ██╔████╔██║"
+    echo "       ╚════██║██╔══╝     ██║   ██║   ██║██╔═══╝     ╚██╗ ██╔╝██╔══╝  ██║╚██╔╝██║"
+    echo "       ███████║███████╗   ██║   ╚██████╔╝██║          ╚████╔╝ ███████╗██║ ╚═╝ ██║"
+    echo "       ╚══════╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝           ╚═══╝  ╚══════╝╚═╝     ╚═╝"
+    echo ""
+    echo "       ███████╗ █████╗ ███████╗███████╗██████╗"
+    echo "       ██╔════╝██╔══██╗╚══███╔╝██╔════╝██╔══██╗"
+    echo "       █████╗  ███████║  ███╔╝ █████╗  ██████╔╝"
+    echo "       ██╔══╝  ██╔══██║ ███╔╝  ██╔══╝  ██╔══██╗"
+    echo "       ██║     ██║  ██║███████╗███████╗██║  ██║"
+    echo "       ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝"
+    echo -e "${NC}"
+}
+
 print_banner() {
     clear
-    echo -e "${BLUE}"
-    echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║                                                            ║"
-    echo "║              🚀 SETUP VEM FAZER 🚀                        ║"
-    echo "║                                                            ║"
-    echo "║     Instalador Unificado de Ferramentas Open Source        ║"
-    echo "║     Canal: Vem Fazer | Raphael Batista                     ║"
-    echo "║     YouTube: youtube.com/@VemFazer                         ║"
-    echo "║                                                            ║"
-    echo "╚══════════════════════════════════════════════════════════════╝"
-    echo -e "${NC}"
+    print_ascii_setup
+    echo ""
+    echo -e "${YELLOW}==================================================================================================${NC}"
+    echo -e "${YELLOW}=                                                                                                =${NC}"
+    echo -e "${YELLOW}=   ${WHITE}Este auto instalador foi desenvolvido para auxiliar na instalação das principais aplicações${YELLOW}  =${NC}"
+    echo -e "${YELLOW}=    ${WHITE}disponíveis no mercado open source. Já deixo todos os créditos aos desenvolvedores de cada${YELLOW}  =${NC}"
+    echo -e "${YELLOW}=   ${WHITE}aplicação disponíveis aqui. Este Setup é licenciado sob a Licença MIT (MIT). Você pode usar,${YELLOW} =${NC}"
+    echo -e "${YELLOW}=    ${WHITE}copiar, modificar, integrar, publicar, distribuir e/ou vender cópias dos produtos finais,${YELLOW}  =${NC}"
+    echo -e "${YELLOW}=   ${WHITE}mas deve sempre declarar que Canal Vem Fazer (contato@vemfazer.com) é o autor original${YELLOW}      =${NC}"
+    echo -e "${YELLOW}=   ${WHITE}destes códigos e atribuir um link para https://setup.vemfazer.com.br${YELLOW}                          =${NC}"
+    echo -e "${YELLOW}=                                                                                                =${NC}"
+    echo -e "${YELLOW}=   ${CYAN}📺 YouTube: https://www.youtube.com/@VemFazer${YELLOW}                                              =${NC}"
+    echo -e "${YELLOW}=   ${CYAN}💬 WhatsApp: https://chat.whatsapp.com/CanalVemFazer${YELLOW}                                       =${NC}"
+    echo -e "${YELLOW}=   ${CYAN}🌐 Site: https://setup.vemfazer.com.br${YELLOW}                                                        =${NC}"
+    echo -e "${YELLOW}=                                                                                                =${NC}"
+    echo -e "${YELLOW}==================================================================================================${NC}"
+    echo ""
+}
+
+pre_install_checks() {
+    clear
+    print_ascii_verificando
+    echo ""
+    echo -e "${WHITE}Aguarde enquanto verificamos algumas informações.${NC}"
+    echo ""
+
+    print_ascii_aviso
+    echo ""
+    echo -e "${WHITE}                            Este script recomenda o uso do Ubuntu 22.04+${NC}"
+    echo ""
+
+    local step=1
+    local total=15
+
+    echo -e "${step}/${total} - Verificando Docker..."
+    if command -v docker &>/dev/null; then
+        echo -e "${GREEN}${step}/${total} - [ OK ] - Docker já está instalado${NC}"
+    else
+        echo -e "${YELLOW}${step}/${total} - [ OFF ] - Docker não está instalado${NC}"
+    fi
+    step=$((step + 1))
+
+    echo -e "${GREEN}${step}/${total} - [ OK ] - Fazendo Upgrade${NC}"
+    apt-get upgrade -y -qq 2>/dev/null || true
+    step=$((step + 1))
+
+    for pkg in sudo apt-utils dialog; do
+        echo -e "${GREEN}${step}/${total} - [ OK ] - Verificando/Instalando ${pkg}${NC}"
+        apt-get install -y -qq "$pkg" 2>/dev/null || true
+        step=$((step + 1))
+    done
+
+    echo -e "${GREEN}${step}/${total} - [ OK ] - Verificando/Instalando jq 1/2${NC}"
+    step=$((step + 1))
+    echo -e "${GREEN}${step}/${total} - [ OK ] - Verificando/Instalando jq 2/2${NC}"
+    apt-get install -y -qq jq 2>/dev/null || true
+    step=$((step + 1))
+
+    echo -e "${GREEN}${step}/${total} - [ OK ] - Verificando/Instalando apache2-utils 1/2${NC}"
+    step=$((step + 1))
+    echo -e "${GREEN}${step}/${total} - [ OK ] - Verificando/Instalando apache2-utils 2/2${NC}"
+    apt-get install -y -qq apache2-utils 2>/dev/null || true
+    step=$((step + 1))
+
+    echo -e "${GREEN}${step}/${total} - [ OK ] - Verificando/Instalando Git${NC}"
+    apt-get install -y -qq git 2>/dev/null || true
+    step=$((step + 1))
+
+    echo -e "${GREEN}${step}/${total} - [ OK ] - Verificando/Instalando python3${NC}"
+    apt-get install -y -qq python3 2>/dev/null || true
+    step=$((step + 1))
+
+    echo -e "${GREEN}${step}/${total} - [ OK ] - Fazendo Update${NC}"
+    apt-get update -qq 2>/dev/null || true
+    step=$((step + 1))
+
+    echo -e "${GREEN}${step}/${total} - [ OK ] - Fazendo Upgrade${NC}"
+    apt-get upgrade -y -qq 2>/dev/null || true
+    step=$((step + 1))
+
+    echo -e "${GREEN}${step}/${total} - [ OK ] - Verificando/Instalando neofetch${NC}"
+    apt-get install -y -qq neofetch 2>/dev/null || true
+    step=$((step + 1))
+
+    echo -e "${GREEN}${step}/${total} - [ OK ] - Baixando o script${NC}"
+    step=$((step + 1))
+
+    echo ""
+    print_ascii_setup
+    print_ascii_iniciando
+    echo ""
+}
+
+accept_terms() {
+    print_banner
+    echo ""
+    read -rp "$(echo -e ${YELLOW}'Ao digitar Y você aceita e concorda com as orientações passadas acima (Y/N): '${NC})" accept
+    if [[ "${accept,,}" != "y" ]]; then
+        echo -e "${RED}Você não aceitou os termos. Saindo...${NC}"
+        exit 0
+    fi
+    ACCEPTED_TERMS=true
+    echo ""
 }
 
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
@@ -1737,6 +1895,8 @@ show_main_menu() {
 main() {
     check_root
     check_os
+    pre_install_checks
+    accept_terms
     
     while true; do
         show_main_menu
