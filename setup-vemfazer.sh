@@ -42,6 +42,9 @@ EMAIL=""
 TRAEFIK_INSTALLED=false
 ACCEPTED_TERMS=false
 declare -A TOOL_DOMAINS
+CREDENTIALS_FILE="/root/vemfazer-credenciais.txt"
+LAST_INSTALL_DIR=""
+LAST_INSTALL_DOMAIN=""
 
 # ======================== FUNÇÕES UTILITÁRIAS ========================
 
@@ -324,6 +327,126 @@ declare -A TOOL_DEFAULT_SUBDOMAIN=(
     [80]="rustdesk" [81]="hoppscotch"
 )
 
+# ======================== DEPENDÊNCIAS ENTRE FERRAMENTAS ========================
+
+declare -A TOOL_DEPS=(
+    [2]="1"    # Portainer → Traefik
+    [3]="1"    # MinIO → Traefik
+    [4]="1"    # Ntfy → Traefik
+    [5]="1"    # Gotenberg → Traefik
+    [6]="1"    # RabbitMQ → Traefik
+    [7]="1"    # Browserless → Traefik
+    [8]="1"    # Chatwoot → Traefik
+    [9]="1"    # Evolution API → Traefik
+    [10]="1"   # WppConnect → Traefik
+    [11]="1"   # Quepasa → Traefik
+    [12]="1"   # Uno API → Traefik
+    [13]="1"   # Wuzapi → Traefik
+    [14]="1"   # N8N → Traefik
+    [15]="1 3" # Typebot → Traefik + MinIO
+    [16]="1"   # Mautic → Traefik
+    [17]="1"   # Flowise → Traefik
+    [18]="1"   # Dify → Traefik
+    [19]="1"   # Ollama → Traefik
+    [20]="1"   # LangFlow → Traefik
+    [21]="1"   # Langfuse → Traefik
+    [22]="1"   # Anything LLM → Traefik
+    [23]="1"   # Qdrant → Traefik
+    [24]="1"   # ZEP → Traefik
+    [25]="1"   # Evo AI → Traefik
+    [26]="1"   # Bolt → Traefik
+    [27]="1"   # Woofed → Traefik
+    [28]="1"   # TwentyCRM → Traefik
+    [29]="1"   # Krayin → Traefik
+    [30]="1"   # OpenProject → Traefik
+    [31]="1"   # Planka → Traefik
+    [32]="1"   # Focalboard → Traefik
+    [33]="1"   # GLPI → Traefik
+    [34]="1"   # Formbricks → Traefik
+    [35]="1"   # PgAdmin → Traefik
+    [36]="1"   # MongoDB → Traefik
+    [37]="1"   # Supabase → Traefik
+    [38]="1"   # PhpMyAdmin → Traefik
+    [39]="1"   # NocoDB → Traefik
+    [40]="1"   # Baserow → Traefik
+    [41]="1"   # Nocobase → Traefik
+    [42]="1"   # ClickHouse → Traefik
+    [43]="1"   # RedisInsight → Traefik
+    [44]="1"   # Metabase → Traefik
+    [45]="1"   # WordPress → Traefik
+    [46]="1"   # Directus → Traefik
+    [47]="1"   # Strapi → Traefik
+    [48]="1"   # NextCloud → Traefik
+    [49]="1"   # Wiki.js → Traefik
+    [50]="1"   # HumHub → Traefik
+    [51]="1"   # Outline → Traefik
+    [52]="1"   # Moodle → Traefik
+    [53]="1"   # Uptime Kuma → Traefik
+    [54]="1"   # Grafana → Traefik
+    [55]="1"   # Prometheus → Traefik
+    [56]="1"   # cAdvisor → Traefik
+    [57]="1"   # Traccar → Traefik
+    [58]="1"   # Cal.com → Traefik
+    [59]="1"   # Appsmith → Traefik
+    [60]="1"   # LowCoder → Traefik
+    [61]="1"   # ToolJet → Traefik
+    [62]="1"   # Excalidraw → Traefik
+    [63]="1"   # Docuseal → Traefik
+    [64]="1"   # Documeso → Traefik
+    [65]="1"   # Stirling PDF → Traefik
+    [66]="1"   # Easy!Appointments → Traefik
+    [67]="1"   # WiseMapping → Traefik
+    [68]="1"   # Affine → Traefik
+    [69]="1"   # Mattermost → Traefik
+    [70]="1"   # Odoo → Traefik
+    [71]="1"   # Frappe → Traefik
+    [72]="1"   # Keycloak → Traefik
+    [73]="1"   # VaultWarden → Traefik
+    [74]="1"   # Passbolt → Traefik
+    [75]="1"   # Botpress → Traefik
+    [76]="1"   # Yourls → Traefik
+    [77]="1"   # Firecrawl → Traefik
+    [78]="1"   # AzuraCast → Traefik
+    [79]="1"   # Shlink → Traefik
+    [80]="1"   # RustDesk → Traefik
+    [81]="1"   # Hoppscotch → Traefik
+)
+
+declare -A TOOL_DEP_REASON=(
+    [1]="Proxy reverso + SSL"
+    [3]="Upload de mídia/arquivos (S3)"
+)
+
+resolve_dependencies() {
+    local selected="$1"
+    local resolved="$selected"
+    local added_any=false
+    
+    for num in $selected; do
+        local deps="${TOOL_DEPS[$num]:-}"
+        if [[ -n "$deps" ]]; then
+            for dep in $deps; do
+                if ! echo " $resolved " | grep -q " $dep "; then
+                    local dep_name="${TOOL_NAME_MAP[$dep]:-Ferramenta $dep}"
+                    local tool_name="${TOOL_NAME_MAP[$num]:-Ferramenta $num}"
+                    local reason="${TOOL_DEP_REASON[$dep]:-dependência necessária}"
+                    echo -e "  ${YELLOW}⚠️  ${tool_name} requer ${dep_name} (${reason}). Adicionando automaticamente.${NC}"
+                    resolved="$dep $resolved"
+                    added_any=true
+                fi
+            done
+        fi
+    done
+    
+    if [[ "$added_any" == true ]]; then
+        echo ""
+        read -rp "$(echo -e ${CYAN}'Pressione ENTER para continuar...'${NC})" _
+    fi
+    
+    # Remover duplicatas e ordenar
+    echo "$resolved" | tr ' ' '\n' | sort -un | tr '\n' ' ' | xargs
+}
+
 ask_subdomains() {
     local selected_tools="$1"
     
@@ -342,7 +465,7 @@ ask_subdomains() {
         
         [[ -z "$name" ]] && continue
         
-        # Typebot precisa de 2 subdomínios
+        # Typebot precisa de 2 subdomínios (Builder + Viewer)
         if [[ "$num" == "15" ]]; then
             echo -e "  ${CYAN}📦 ${name} (Builder)${NC}"
             read -rp "     Subdomínio (ex: typebot.meudominio.com): " typebot_builder_domain
@@ -351,6 +474,19 @@ ask_subdomains() {
             echo -e "  ${CYAN}📦 ${name} (Viewer)${NC}"
             read -rp "     Subdomínio (ex: bot.meudominio.com): " typebot_viewer_domain
             TOOL_DOMAINS["typebot-viewer"]="$typebot_viewer_domain"
+            echo ""
+            continue
+        fi
+        
+        # MinIO precisa de 2 subdomínios (Console + API S3)
+        if [[ "$num" == "3" ]]; then
+            echo -e "  ${CYAN}📦 ${name} (Console / Web UI)${NC}"
+            read -rp "     Subdomínio (ex: minio.meudominio.com): " minio_console_domain
+            TOOL_DOMAINS["minio"]="$minio_console_domain"
+            echo ""
+            echo -e "  ${CYAN}📦 ${name} (API S3)${NC}"
+            read -rp "     Subdomínio (ex: s3.meudominio.com): " minio_api_domain
+            TOOL_DOMAINS["minio-api"]="$minio_api_domain"
             echo ""
             continue
         fi
@@ -382,6 +518,116 @@ ask_subdomains() {
 
 generate_password() {
     openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c "${1:-24}"
+}
+
+# ======================== STATUS E CREDENCIAIS ========================
+
+check_service_status() {
+    local dir="$1"
+    local containers=()
+    local statuses=()
+    
+    if [[ ! -f "$dir/docker-compose.yml" ]]; then
+        return
+    fi
+    
+    # Aguardar containers estabilizarem
+    sleep 3
+    
+    local ps_output
+    ps_output=$(cd "$dir" && docker compose ps --format "{{.Name}}|{{.State}}" 2>/dev/null || true)
+    
+    if [[ -z "$ps_output" ]]; then
+        echo -e "  ${YELLOW}⚠️  Não foi possível verificar os containers${NC}"
+        return
+    fi
+    
+    while IFS='|' read -r name state; do
+        [[ -z "$name" ]] && continue
+        local icon
+        case "$state" in
+            running) icon="${GREEN}✅ running${NC}" ;;
+            restarting) icon="${YELLOW}🔄 restarting${NC}" ;;
+            exited|dead) icon="${RED}❌ exited${NC}" ;;
+            *) icon="${YELLOW}⚠️  ${state}${NC}" ;;
+        esac
+        echo -e "  ║     %-25s %b" "$name" "$icon"
+        printf "  ║     %-25s %b\n" "$name" "$icon"
+    done <<< "$ps_output"
+}
+
+show_install_result() {
+    local name="$1"
+    local url="$2"
+    local user="$3"
+    local password="$4"
+    local extra_info="$5"
+    local compose_dir="$6"
+    
+    local width=64
+    local line
+    line=$(printf '═%.0s' $(seq 1 $width))
+    
+    echo ""
+    echo -e "${GREEN}╔${line}╗${NC}"
+    printf "${GREEN}║${NC}  ✅ %-$(($width - 5))s${GREEN}║${NC}\n" "${name} — Instalação concluída"
+    echo -e "${GREEN}╠${line}╣${NC}"
+    
+    if [[ -n "$url" ]]; then
+        printf "${GREEN}║${NC}  🌐 URL:      %-$(($width - 16))s${GREEN}║${NC}\n" "$url"
+    fi
+    
+    if [[ -n "$user" ]]; then
+        printf "${GREEN}║${NC}  👤 Usuário:  %-$(($width - 16))s${GREEN}║${NC}\n" "$user"
+    fi
+    
+    if [[ -n "$password" ]]; then
+        printf "${GREEN}║${NC}  🔑 Senha:    %-$(($width - 16))s${GREEN}║${NC}\n" "$password"
+    fi
+    
+    if [[ -n "$extra_info" ]]; then
+        echo -e "${GREEN}║${NC}  ${extra_info}"
+    fi
+    
+    # Status dos containers
+    if [[ -n "$compose_dir" ]] && [[ -f "$compose_dir/docker-compose.yml" ]]; then
+        printf "${GREEN}║${NC}  %-$(($width - 3))s${GREEN}║${NC}\n" ""
+        printf "${GREEN}║${NC}  📦 %-$(($width - 6))s${GREEN}║${NC}\n" "Containers:"
+        
+        sleep 3
+        
+        local ps_output
+        ps_output=$(cd "$compose_dir" && docker compose ps --format "{{.Name}}|{{.State}}" 2>/dev/null || true)
+        
+        if [[ -n "$ps_output" ]]; then
+            while IFS='|' read -r cname cstate; do
+                [[ -z "$cname" ]] && continue
+                local icon
+                case "$cstate" in
+                    running) icon="✅ running" ;;
+                    restarting) icon="🔄 restarting" ;;
+                    exited|dead) icon="❌ exited" ;;
+                    *) icon="⚠️  ${cstate}" ;;
+                esac
+                printf "${GREEN}║${NC}     %-20s %-$(($width - 26))s${GREEN}║${NC}\n" "$cname" "$icon"
+            done <<< "$ps_output"
+        fi
+    fi
+    
+    echo -e "${GREEN}╚${line}╝${NC}"
+    echo ""
+    
+    # Salvar credenciais em arquivo
+    {
+        echo "════════════════════════════════════════════════════════════════"
+        echo "  ${name} — $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "════════════════════════════════════════════════════════════════"
+        [[ -n "$url" ]] && echo "  URL:     $url"
+        [[ -n "$user" ]] && echo "  Usuário: $user"
+        [[ -n "$password" ]] && echo "  Senha:   $password"
+        [[ -n "$extra_info" ]] && echo "  Extra:   $(echo -e "$extra_info" | sed 's/\x1B\[[0-9;]*m//g')"
+        echo ""
+    } >> "$CREDENTIALS_FILE"
 }
 
 # ======================== INSTALAÇÃO DO TRAEFIK ========================
@@ -444,11 +690,11 @@ EOF
 
     cd "$dir" && docker compose up -d
     TRAEFIK_INSTALLED=true
+    local traefik_url=""
     if [[ -n "$traefik_domain" ]]; then
-        log_success "Traefik instalado! Dashboard: https://${traefik_domain}"
-    else
-        log_success "Traefik instalado!"
+        traefik_url="https://${traefik_domain}"
     fi
+    show_install_result "Traefik" "$traefik_url" "" "" "" "$dir"
 }
 
 # ======================== FUNÇÃO GENÉRICA DE INSTALAÇÃO ========================
@@ -507,6 +753,9 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
+    # Retornar diretório e domínio para funções que chamam install_service
+    LAST_INSTALL_DIR="$dir"
+    LAST_INSTALL_DOMAIN="$full_domain"
     log_success "${name} instalado! Acesse: https://${full_domain}"
 }
 
@@ -515,26 +764,68 @@ EOF
 install_portainer() {
     install_service "Portainer" "portainer" "portainer/portainer-ce:latest" "9000" "" \
         "      - /var/run/docker.sock:/var/run/docker.sock\n      - portainer_data:/data"
+    show_install_result "Portainer" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_minio() {
+    local MINIO_CONSOLE_DOMAIN="${TOOL_DOMAINS[minio]:-minio.exemplo.com}"
+    local MINIO_API_DOMAIN="${TOOL_DOMAINS[minio-api]:-s3.exemplo.com}"
     local pwd
     pwd=$(generate_password)
-    install_service "MinIO" "minio" "minio/minio:latest" "9001" \
-        "      MINIO_ROOT_USER: admin\n      MINIO_ROOT_PASSWORD: ${pwd}" \
-        "      - minio_data:/data" \
-        "    command: server /data --console-address ':9001'"
-    echo -e "  ${YELLOW}Senha MinIO: ${pwd}${NC}"
+    local dir="$DOCKER_COMPOSE_DIR/minio"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: ${pwd}
+    volumes:
+      - minio_data:/data
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio-console.rule=Host(\`${MINIO_CONSOLE_DOMAIN}\`)"
+      - "traefik.http.routers.minio-console.entrypoints=websecure"
+      - "traefik.http.routers.minio-console.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.minio-console.service=minio-console"
+      - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
+      - "traefik.http.routers.minio-api.rule=Host(\`${MINIO_API_DOMAIN}\`)"
+      - "traefik.http.routers.minio-api.entrypoints=websecure"
+      - "traefik.http.routers.minio-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.minio-api.service=minio-api"
+      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
+
+volumes:
+  minio_data:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d
+    show_install_result "MinIO" "https://${MINIO_CONSOLE_DOMAIN}" "admin" "$pwd" "📡 API S3: https://${MINIO_API_DOMAIN}" "$dir"
 }
 
 install_ntfy() {
     install_service "Ntfy" "ntfy" "binwiederhier/ntfy:latest" "80" "" \
         "      - ntfy_data:/var/cache/ntfy" \
         "    command: serve"
+    show_install_result "Ntfy" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_gotenberg() {
     install_service "Gotenberg" "gotenberg" "gotenberg/gotenberg:8" "3000"
+    show_install_result "Gotenberg" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_rabbitmq() {
@@ -542,7 +833,7 @@ install_rabbitmq() {
     pwd=$(generate_password)
     install_service "RabbitMQ" "rabbitmq" "rabbitmq:3-management" "15672" \
         "      RABBITMQ_DEFAULT_USER: admin\n      RABBITMQ_DEFAULT_PASS: ${pwd}"
-    echo -e "  ${YELLOW}Senha RabbitMQ: ${pwd}${NC}"
+    show_install_result "RabbitMQ" "https://${LAST_INSTALL_DOMAIN}" "admin" "$pwd" "" "$LAST_INSTALL_DIR"
 }
 
 install_browserless() {
@@ -550,15 +841,30 @@ install_browserless() {
     token=$(generate_password 16)
     install_service "Browserless" "browserless" "browserless/chrome:latest" "3000" \
         "      TOKEN: ${token}"
-    echo -e "  ${YELLOW}Token Browserless: ${token}${NC}"
+    show_install_result "Browserless" "https://${LAST_INSTALL_DOMAIN}" "" "" "🔑 Token: ${token}" "$LAST_INSTALL_DIR"
 }
 
 install_chatwoot() {
     local CHATWOOT_DOMAIN="${TOOL_DOMAINS[chatwoot]:-chatwoot.exemplo.com}"
     local secret
     secret=$(generate_password 32)
+    local secret_key
+    secret_key=$(generate_password 64)
     local dir="$DOCKER_COMPOSE_DIR/chatwoot"
     mkdir -p "$dir"
+    
+    # Detectar se MinIO está disponível para storage S3
+    local s3_env=""
+    local MINIO_API_DOMAIN="${TOOL_DOMAINS[minio-api]:-}"
+    if [[ -n "$MINIO_API_DOMAIN" ]]; then
+        s3_env="
+      ACTIVE_STORAGE_SERVICE: amazon
+      S3_BUCKET_NAME: chatwoot
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: \${MINIO_PASSWORD:-changeme}
+      AWS_REGION: us-east-1
+      S3_ENDPOINT: https://${MINIO_API_DOMAIN}"
+    fi
     
     cat > "$dir/docker-compose.yml" << EOF
 version: '3.8'
@@ -592,11 +898,12 @@ services:
       - chatwoot-db
       - chatwoot-redis
     environment:
-      SECRET_KEY_BASE: $(generate_password 64)
+      SECRET_KEY_BASE: ${secret_key}
       FRONTEND_URL: https://${CHATWOOT_DOMAIN}
       DATABASE_URL: postgres://chatwoot:${secret}@chatwoot-db:5432/chatwoot
       REDIS_URL: redis://chatwoot-redis:6379
       RAILS_ENV: production
+      NODE_ENV: production${s3_env}
     entrypoint: docker/entrypoints/rails.sh
     command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
     networks:
@@ -608,6 +915,24 @@ services:
       - "traefik.http.routers.chatwoot.tls.certresolver=letsencrypt"
       - "traefik.http.services.chatwoot.loadbalancer.server.port=3000"
 
+  chatwoot-sidekiq:
+    image: chatwoot/chatwoot:latest
+    container_name: chatwoot-sidekiq
+    restart: unless-stopped
+    depends_on:
+      - chatwoot-db
+      - chatwoot-redis
+    environment:
+      SECRET_KEY_BASE: ${secret_key}
+      FRONTEND_URL: https://${CHATWOOT_DOMAIN}
+      DATABASE_URL: postgres://chatwoot:${secret}@chatwoot-db:5432/chatwoot
+      REDIS_URL: redis://chatwoot-redis:6379
+      RAILS_ENV: production
+      NODE_ENV: production${s3_env}
+    command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
+    networks:
+      - proxy
+
 volumes:
   chatwoot_db:
 
@@ -617,7 +942,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Chatwoot instalado! Acesse: https://${CHATWOOT_DOMAIN}"
+    show_install_result "Chatwoot" "https://${CHATWOOT_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${secret}\n${GREEN}║${NC}  ✔ Sidekiq (worker) incluído" "$dir"
 }
 
 install_evolution_api() {
@@ -625,20 +950,26 @@ install_evolution_api() {
     key=$(generate_password 32)
     install_service "Evolution API" "evolution" "atendai/evolution-api:latest" "8080" \
         "      AUTHENTICATION_API_KEY: ${key}"
-    echo -e "  ${YELLOW}API Key Evolution: ${key}${NC}"
+    show_install_result "Evolution API" "https://${LAST_INSTALL_DOMAIN}" "" "" "🔑 API Key: ${key}" "$LAST_INSTALL_DIR"
 }
 
 install_n8n() {
     install_service "N8N" "n8n" "docker.n8n.io/n8nio/n8n:latest" "5678" \
         "      N8N_HOST: ${TOOL_DOMAINS[n8n]}\n      N8N_PROTOCOL: https\n      WEBHOOK_URL: https://${TOOL_DOMAINS[n8n]}/" \
         "      - n8n_data:/home/node/.n8n"
+    show_install_result "N8N" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_typebot() {
     local TYPEBOT_BUILDER_DOMAIN="${TOOL_DOMAINS[typebot]:-typebot.exemplo.com}"
     local TYPEBOT_VIEWER_DOMAIN="${TOOL_DOMAINS[typebot-viewer]:-bot.exemplo.com}"
+    local MINIO_API_DOMAIN="${TOOL_DOMAINS[minio-api]:-s3.exemplo.com}"
     local secret
     secret=$(generate_password 32)
+    local encryption_secret
+    encryption_secret=$(generate_password 32)
+    local nextauth_secret
+    nextauth_secret=$(generate_password 32)
     local dir="$DOCKER_COMPOSE_DIR/typebot"
     mkdir -p "$dir"
 
@@ -669,8 +1000,12 @@ services:
       DATABASE_URL: postgres://typebot:${secret}@typebot-db:5432/typebot
       NEXTAUTH_URL: https://${TYPEBOT_BUILDER_DOMAIN}
       NEXT_PUBLIC_VIEWER_URL: https://${TYPEBOT_VIEWER_DOMAIN}
-      ENCRYPTION_SECRET: $(generate_password 32)
-      NEXTAUTH_SECRET: $(generate_password 32)
+      ENCRYPTION_SECRET: ${encryption_secret}
+      NEXTAUTH_SECRET: ${nextauth_secret}
+      S3_ACCESS_KEY: admin
+      S3_SECRET_KEY: \${MINIO_PASSWORD:-changeme}
+      S3_BUCKET: typebot
+      S3_ENDPOINT: https://${MINIO_API_DOMAIN}
     networks:
       - proxy
     labels:
@@ -690,7 +1025,11 @@ services:
       DATABASE_URL: postgres://typebot:${secret}@typebot-db:5432/typebot
       NEXTAUTH_URL: https://${TYPEBOT_BUILDER_DOMAIN}
       NEXT_PUBLIC_VIEWER_URL: https://${TYPEBOT_VIEWER_DOMAIN}
-      ENCRYPTION_SECRET: $(generate_password 32)
+      ENCRYPTION_SECRET: ${encryption_secret}
+      S3_ACCESS_KEY: admin
+      S3_SECRET_KEY: \${MINIO_PASSWORD:-changeme}
+      S3_BUCKET: typebot
+      S3_ENDPOINT: https://${MINIO_API_DOMAIN}
     networks:
       - proxy
     labels:
@@ -709,7 +1048,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Typebot instalado! Builder: https://${TYPEBOT_BUILDER_DOMAIN} | Viewer: https://${TYPEBOT_VIEWER_DOMAIN}"
+    show_install_result "Typebot" "https://${TYPEBOT_BUILDER_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${secret}\n${GREEN}║${NC}  🌐 Viewer: https://${TYPEBOT_VIEWER_DOMAIN}" "$dir"
 }
 
 install_mautic() {
@@ -769,13 +1108,16 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Mautic instalado! Acesse: https://${MAUTIC_DOMAIN}"
+    show_install_result "Mautic" "https://${MAUTIC_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_flowise() {
+    local pwd
+    pwd=$(generate_password)
     install_service "Flowise" "flowise" "flowiseai/flowise:latest" "3000" \
-        "      FLOWISE_USERNAME: admin\n      FLOWISE_PASSWORD: $(generate_password)" \
+        "      FLOWISE_USERNAME: admin\n      FLOWISE_PASSWORD: ${pwd}" \
         "      - flowise_data:/root/.flowise"
+    show_install_result "Flowise" "https://${LAST_INSTALL_DOMAIN}" "admin" "$pwd" "" "$LAST_INSTALL_DIR"
 }
 
 install_dify() {
@@ -788,16 +1130,18 @@ install_dify() {
         curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/docker-compose.yaml -o docker-compose.yml
     fi
     docker compose up -d
-    log_success "Dify AI instalado!"
+    show_install_result "Dify AI" "https://${TOOL_DOMAINS[dify]:-dify.exemplo.com}" "(criar no primeiro acesso)" "" "" "$dir"
 }
 
 install_ollama() {
     install_service "Ollama" "ollama" "ollama/ollama:latest" "11434" "" \
         "      - ollama_data:/root/.ollama"
+    show_install_result "Ollama" "https://${LAST_INSTALL_DOMAIN}" "" "" "ℹ️  API local para modelos LLM" "$LAST_INSTALL_DIR"
 }
 
 install_langflow() {
     install_service "LangFlow" "langflow" "langflowai/langflow:latest" "7860"
+    show_install_result "LangFlow" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_langfuse() {
@@ -853,58 +1197,73 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Langfuse instalado! Acesse: https://${LANGFUSE_DOMAIN}"
+    show_install_result "Langfuse" "https://${LANGFUSE_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_anything_llm() {
     install_service "Anything LLM" "anythingllm" "mintplexlabs/anythingllm:latest" "3001" \
         "      STORAGE_DIR: /app/server/storage" \
         "      - anythingllm_data:/app/server/storage"
+    show_install_result "Anything LLM" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_qdrant() {
     install_service "Qdrant" "qdrant" "qdrant/qdrant:latest" "6333" "" \
         "      - qdrant_data:/qdrant/storage"
+    show_install_result "Qdrant" "https://${LAST_INSTALL_DOMAIN}" "" "" "ℹ️  Vector DB para embeddings" "$LAST_INSTALL_DIR"
 }
 
 install_zep() {
     install_service "ZEP" "zep" "ghcr.io/getzep/zep:latest" "8000"
+    show_install_result "ZEP" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_evo_ai() {
     install_service "Evo AI" "evoai" "evoai/evoai:latest" "8000"
+    show_install_result "Evo AI" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_bolt() {
     install_service "Bolt" "bolt" "ghcr.io/stackblitz-labs/bolt.diy:latest" "5173"
+    show_install_result "Bolt" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_woofed_crm() {
     install_service "Woofed CRM" "woofed" "woofedcrm/woofedcrm:latest" "3000"
+    show_install_result "Woofed CRM" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_twentycrm() {
     install_service "TwentyCRM" "twentycrm" "twentycrm/twenty:latest" "3000"
+    show_install_result "TwentyCRM" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_krayin_crm() {
     install_service "Krayin CRM" "krayin" "krayincrm/krayin:latest" "80"
+    show_install_result "Krayin CRM" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_openproject() {
     local pwd
     pwd=$(generate_password)
+    local secret_key
+    secret_key=$(generate_password 64)
     install_service "OpenProject" "openproject" "openproject/openproject:14" "8080" \
-        "      OPENPROJECT_SECRET_KEY_BASE: $(generate_password 64)\n      OPENPROJECT_HOST__NAME: ${TOOL_DOMAINS[openproject]}\n      OPENPROJECT_HTTPS: true"
+        "      OPENPROJECT_SECRET_KEY_BASE: ${secret_key}\n      OPENPROJECT_HOST__NAME: ${TOOL_DOMAINS[openproject]}\n      OPENPROJECT_HTTPS: true"
+    show_install_result "OpenProject" "https://${LAST_INSTALL_DOMAIN}" "admin" "admin (alterar no primeiro acesso)" "" "$LAST_INSTALL_DIR"
 }
 
 install_planka() {
+    local pwd
+    pwd=$(generate_password)
     install_service "Planka" "planka" "ghcr.io/plankanban/planka:latest" "1337" \
-        "      BASE_URL: https://${TOOL_DOMAINS[planka]}\n      SECRET_KEY: $(generate_password 64)\n      DEFAULT_ADMIN_EMAIL: ${EMAIL}\n      DEFAULT_ADMIN_PASSWORD: $(generate_password)"
+        "      BASE_URL: https://${TOOL_DOMAINS[planka]}\n      SECRET_KEY: $(generate_password 64)\n      DEFAULT_ADMIN_EMAIL: ${EMAIL}\n      DEFAULT_ADMIN_PASSWORD: ${pwd}"
+    show_install_result "Planka" "https://${LAST_INSTALL_DOMAIN}" "$EMAIL" "$pwd" "" "$LAST_INSTALL_DIR"
 }
 
 install_focalboard() {
     install_service "Focalboard" "focalboard" "mattermost/focalboard:latest" "8000"
+    show_install_result "Focalboard" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_glpi() {
@@ -961,12 +1320,13 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "GLPI instalado! Acesse: https://${GLPI_DOMAIN}"
+    show_install_result "GLPI" "https://${GLPI_DOMAIN}" "glpi" "glpi (alterar no primeiro acesso)" "🔑 Senha DB: ${pwd}\n${GREEN}║${NC}  ℹ️  Outros logins padrão: tech/tech, normal/normal, post-only/postonly" "$dir"
 }
 
 install_formbricks() {
     install_service "Formbricks" "formbricks" "formbricks/formbricks:latest" "3000" \
         "      WEBAPP_URL: https://${TOOL_DOMAINS[formbricks]}\n      NEXTAUTH_SECRET: $(generate_password 32)\n      ENCRYPTION_KEY: $(generate_password 32)"
+    show_install_result "Formbricks" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_pgadmin() {
@@ -974,7 +1334,7 @@ install_pgadmin() {
     pwd=$(generate_password)
     install_service "PgAdmin 4" "pgadmin" "dpage/pgadmin4:latest" "80" \
         "      PGADMIN_DEFAULT_EMAIL: ${EMAIL}\n      PGADMIN_DEFAULT_PASSWORD: ${pwd}"
-    echo -e "  ${YELLOW}Senha PgAdmin: ${pwd}${NC}"
+    show_install_result "PgAdmin 4" "https://${LAST_INSTALL_DOMAIN}" "$EMAIL" "$pwd" "" "$LAST_INSTALL_DIR"
 }
 
 install_mongodb() {
@@ -983,7 +1343,7 @@ install_mongodb() {
     install_service "MongoDB" "mongodb" "mongo:7" "27017" \
         "      MONGO_INITDB_ROOT_USERNAME: admin\n      MONGO_INITDB_ROOT_PASSWORD: ${pwd}" \
         "      - mongodb_data:/data/db"
-    echo -e "  ${YELLOW}Senha MongoDB: ${pwd}${NC}"
+    show_install_result "MongoDB" "https://${LAST_INSTALL_DOMAIN}" "admin" "$pwd" "" "$LAST_INSTALL_DIR"
 }
 
 install_supabase() {
@@ -998,40 +1358,47 @@ install_supabase() {
         rm -rf "$dir/repo"
     fi
     cd "$dir/docker" && docker compose up -d
-    log_success "Supabase instalado!"
+    show_install_result "Supabase" "https://${TOOL_DOMAINS[supabase]:-supabase.exemplo.com}" "(criar no primeiro acesso)" "" "" "$dir/docker"
 }
 
 install_phpmyadmin() {
     install_service "PhpMyAdmin" "phpmyadmin" "phpmyadmin/phpmyadmin:latest" "80" \
         "      PMA_ARBITRARY: 1"
+    show_install_result "PhpMyAdmin" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_nocodb() {
     install_service "NocoDB" "nocodb" "nocodb/nocodb:latest" "8080" "" \
         "      - nocodb_data:/usr/app/data"
+    show_install_result "NocoDB" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_baserow() {
     install_service "Baserow" "baserow" "baserow/baserow:latest" "80" \
         "      BASEROW_PUBLIC_URL: https://${TOOL_DOMAINS[baserow]}" \
         "      - baserow_data:/baserow/data"
+    show_install_result "Baserow" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_nocobase() {
     install_service "Nocobase" "nocobase" "nocobase/nocobase:latest" "13000"
+    show_install_result "Nocobase" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_clickhouse() {
     install_service "ClickHouse" "clickhouse" "clickhouse/clickhouse-server:latest" "8123" "" \
         "      - clickhouse_data:/var/lib/clickhouse"
+    show_install_result "ClickHouse" "https://${LAST_INSTALL_DOMAIN}" "default" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_redisinsight() {
     install_service "RedisInsight" "redisinsight" "redis/redisinsight:latest" "5540"
+    show_install_result "RedisInsight" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_metabase() {
     install_service "Metabase" "metabase" "metabase/metabase:latest" "3000"
+    show_install_result "Metabase" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_wordpress() {
@@ -1091,7 +1458,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "WordPress instalado! Acesse: https://${WORDPRESS_DOMAIN}"
+    show_install_result "WordPress" "https://${WORDPRESS_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_directus() {
@@ -1099,11 +1466,12 @@ install_directus() {
     pwd=$(generate_password)
     install_service "Directus" "directus" "directus/directus:latest" "8055" \
         "      KEY: $(generate_password 32)\n      SECRET: $(generate_password 32)\n      ADMIN_EMAIL: ${EMAIL}\n      ADMIN_PASSWORD: ${pwd}"
-    echo -e "  ${YELLOW}Senha Directus: ${pwd}${NC}"
+    show_install_result "Directus" "https://${LAST_INSTALL_DOMAIN}" "$EMAIL" "$pwd" "" "$LAST_INSTALL_DIR"
 }
 
 install_strapi() {
     install_service "Strapi" "strapi" "strapi/strapi:latest" "1337"
+    show_install_result "Strapi" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_nextcloud() {
@@ -1112,7 +1480,7 @@ install_nextcloud() {
     install_service "NextCloud" "nextcloud" "nextcloud:latest" "80" \
         "      NEXTCLOUD_ADMIN_USER: admin\n      NEXTCLOUD_ADMIN_PASSWORD: ${pwd}\n      NEXTCLOUD_TRUSTED_DOMAINS: ${TOOL_DOMAINS[nextcloud]}" \
         "      - nextcloud_data:/var/www/html"
-    echo -e "  ${YELLOW}Senha NextCloud: ${pwd}${NC}"
+    show_install_result "NextCloud" "https://${LAST_INSTALL_DOMAIN}" "admin" "$pwd" "" "$LAST_INSTALL_DIR"
 }
 
 install_wikijs() {
@@ -1170,37 +1538,47 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Wiki.js instalado! Acesse: https://${WIKIJS_DOMAIN}"
+    show_install_result "Wiki.js" "https://${WIKIJS_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_humhub() {
     install_service "HumHub" "humhub" "mriedmann/humhub:latest" "80"
+    show_install_result "HumHub" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_outline() {
     install_service "Outline" "outline" "outlinewiki/outline:latest" "3000" \
         "      URL: https://${TOOL_DOMAINS[outline]}\n      SECRET_KEY: $(generate_password 32)\n      UTILS_SECRET: $(generate_password 32)"
+    show_install_result "Outline" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_moodle() {
+    local pwd
+    pwd=$(generate_password)
     install_service "Moodle" "moodle" "bitnami/moodle:latest" "8080" \
-        "      MOODLE_USERNAME: admin\n      MOODLE_PASSWORD: $(generate_password)\n      MOODLE_EMAIL: ${EMAIL}\n      MOODLE_SITE_NAME: Vem Fazer"
+        "      MOODLE_USERNAME: admin\n      MOODLE_PASSWORD: ${pwd}\n      MOODLE_EMAIL: ${EMAIL}\n      MOODLE_SITE_NAME: Vem Fazer"
+    show_install_result "Moodle" "https://${LAST_INSTALL_DOMAIN}" "admin" "$pwd" "" "$LAST_INSTALL_DIR"
 }
 
 install_uptime_kuma() {
     install_service "Uptime Kuma" "uptime" "louislam/uptime-kuma:latest" "3001" "" \
         "      - uptime_data:/app/data"
+    show_install_result "Uptime Kuma" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_grafana() {
+    local pwd
+    pwd=$(generate_password)
     install_service "Grafana" "grafana" "grafana/grafana:latest" "3000" \
-        "      GF_SECURITY_ADMIN_PASSWORD: $(generate_password)" \
+        "      GF_SECURITY_ADMIN_PASSWORD: ${pwd}" \
         "      - grafana_data:/var/lib/grafana"
+    show_install_result "Grafana" "https://${LAST_INSTALL_DOMAIN}" "admin" "$pwd" "" "$LAST_INSTALL_DIR"
 }
 
 install_prometheus() {
     install_service "Prometheus" "prometheus" "prom/prometheus:latest" "9090" "" \
         "      - prometheus_data:/prometheus"
+    show_install_result "Prometheus" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_cadvisor() {
@@ -1236,66 +1614,79 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "cAdvisor instalado! Acesse: https://${CADVISOR_DOMAIN}"
+    show_install_result "cAdvisor" "https://${CADVISOR_DOMAIN}" "" "" "" "$dir"
 }
 
 install_traccar() {
     install_service "Traccar" "traccar" "traccar/traccar:latest" "8082" "" \
         "      - traccar_data:/opt/traccar"
+    show_install_result "Traccar" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_calcom() {
     install_service "Cal.com" "calcom" "calcom/cal.com:latest" "3000" \
         "      NEXT_PUBLIC_WEBAPP_URL: https://${TOOL_DOMAINS[calcom]}\n      NEXTAUTH_SECRET: $(generate_password 32)\n      CALENDSO_ENCRYPTION_KEY: $(generate_password 32)"
+    show_install_result "Cal.com" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_appsmith() {
     install_service "Appsmith" "appsmith" "appsmith/appsmith-ce:latest" "80" "" \
         "      - appsmith_data:/appsmith-stacks"
+    show_install_result "Appsmith" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_lowcoder() {
     install_service "LowCoder" "lowcoder" "lowcoderorg/lowcoder-ce:latest" "3000"
+    show_install_result "LowCoder" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_tooljet() {
     install_service "ToolJet" "tooljet" "tooljet/tooljet-ce:latest" "80" \
         "      TOOLJET_HOST: https://${TOOL_DOMAINS[tooljet]}\n      SECRET_KEY_BASE: $(generate_password 64)"
+    show_install_result "ToolJet" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_excalidraw() {
     install_service "Excalidraw" "excalidraw" "excalidraw/excalidraw:latest" "80"
+    show_install_result "Excalidraw" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_docuseal() {
     install_service "Docuseal" "docuseal" "docuseal/docuseal:latest" "3000" "" \
         "      - docuseal_data:/data"
+    show_install_result "Docuseal" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_documeso() {
     install_service "Documeso" "documeso" "documenso/documenso:latest" "3000"
+    show_install_result "Documeso" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_stirling_pdf() {
     install_service "Stirling PDF" "pdf" "frooodle/s-pdf:latest" "8080"
+    show_install_result "Stirling PDF" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_easy_appointments() {
     install_service "Easy!Appointments" "appointments" "alextselegidis/easyappointments:latest" "80" \
         "      BASE_URL: https://${TOOL_DOMAINS[appointments]}"
+    show_install_result "Easy!Appointments" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_wisemapping() {
     install_service "WiseMapping" "wisemapping" "wisemapping/wisemapping-open-source:latest" "8080"
+    show_install_result "WiseMapping" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_affine() {
     install_service "Affine" "affine" "ghcr.io/toeverything/affine-graphql:stable" "3010"
+    show_install_result "Affine" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_mattermost() {
     install_service "Mattermost" "mattermost" "mattermost/mattermost-team-edition:latest" "8065" "" \
         "      - mattermost_data:/mattermost"
+    show_install_result "Mattermost" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_odoo() {
@@ -1355,11 +1746,12 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Odoo instalado! Acesse: https://${ODOO_DOMAIN}"
+    show_install_result "Odoo" "https://${ODOO_DOMAIN}" "admin (definir no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_frappe() {
     install_service "Frappe" "frappe" "frappe/bench:latest" "8000"
+    show_install_result "Frappe" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_keycloak() {
@@ -1369,23 +1761,26 @@ install_keycloak() {
         "      KEYCLOAK_ADMIN: admin\n      KEYCLOAK_ADMIN_PASSWORD: ${pwd}\n      KC_PROXY: edge\n      KC_HOSTNAME: ${TOOL_DOMAINS[keycloak]}" \
         "" \
         "    command: start"
-    echo -e "  ${YELLOW}Senha Keycloak: ${pwd}${NC}"
+    show_install_result "Keycloak" "https://${LAST_INSTALL_DOMAIN}" "admin" "$pwd" "" "$LAST_INSTALL_DIR"
 }
 
 install_vaultwarden() {
     install_service "VaultWarden" "vault" "vaultwarden/server:latest" "80" \
         "      DOMAIN: https://${TOOL_DOMAINS[vault]}" \
         "      - vaultwarden_data:/data"
+    show_install_result "VaultWarden" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_passbolt() {
     install_service "Passbolt" "passbolt" "passbolt/passbolt:latest-ce" "443" \
         "      APP_FULL_BASE_URL: https://${TOOL_DOMAINS[passbolt]}\n      DATASOURCES_DEFAULT_HOST: passbolt-db"
+    show_install_result "Passbolt" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_botpress() {
     install_service "Botpress" "botpress" "botpress/server:latest" "3000" \
         "      EXTERNAL_URL: https://${TOOL_DOMAINS[botpress]}"
+    show_install_result "Botpress" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_yourls() {
@@ -1393,176 +1788,320 @@ install_yourls() {
     pwd=$(generate_password)
     install_service "Yourls" "yourls" "yourls:latest" "80" \
         "      YOURLS_SITE: https://${TOOL_DOMAINS[yourls]}\n      YOURLS_USER: admin\n      YOURLS_PASS: ${pwd}"
-    echo -e "  ${YELLOW}Senha Yourls: ${pwd}${NC}"
+    show_install_result "Yourls" "https://${LAST_INSTALL_DOMAIN}" "admin" "$pwd" "" "$LAST_INSTALL_DIR"
 }
 
 install_firecrawl() {
     install_service "Firecrawl" "firecrawl" "mendableai/firecrawl:latest" "3002"
+    show_install_result "Firecrawl" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_azuracast() {
     install_service "AzuraCast" "radio" "ghcr.io/azuracast/azuracast:latest" "80"
+    show_install_result "AzuraCast" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_shlink() {
     install_service "Shlink" "shlink" "shlinkio/shlink:latest" "8080" \
         "      DEFAULT_DOMAIN: ${TOOL_DOMAINS[shlink]}\n      IS_HTTPS_ENABLED: true\n      GEOLITE_LICENSE_KEY: ''"
+    show_install_result "Shlink" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_rustdesk() {
     install_service "RustDesk" "rustdesk" "rustdesk/rustdesk-server:latest" "21117"
+    show_install_result "RustDesk" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_hoppscotch() {
     install_service "Hoppscotch" "hoppscotch" "hoppscotch/hoppscotch:latest" "3000"
+    show_install_result "Hoppscotch" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_wppconnect() {
     install_service "WppConnect" "wppconnect" "wppconnect/server:latest" "21465"
+    show_install_result "WppConnect" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_quepasa() {
     install_service "Quepasa API" "quepasa" "quepasa/quepasa:latest" "31000"
+    show_install_result "Quepasa API" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_uno_api() {
     install_service "Uno API" "unoapi" "clfrags/unoapi-cloud:latest" "9876"
+    show_install_result "Uno API" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 install_wuzapi() {
     install_service "Wuzapi" "wuzapi" "asternic/wuzapi:latest" "8080"
+    show_install_result "Wuzapi" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
 }
 
 # ======================== MENU PRINCIPAL ========================
 
-show_menu() {
+SELECTED_TOOLS=""
+
+print_menu_item() {
+    local num="$1"
+    local icon="$2"
+    local name="$3"
+    local mark=" "
+    if echo " $SELECTED_TOOLS " | grep -q " $num "; then
+        mark="${GREEN}✔${NC}"
+    fi
+    printf "  %s %2s) %s %-28s" "$mark" "$num" "$icon" "$name"
+}
+
+print_menu_row() {
+    local col1="$1"
+    local col2="$2"
+    if [[ -n "$col2" ]]; then
+        echo -e "${BOLD}║${NC}${col1}${col2}${BOLD}║${NC}"
+    else
+        echo -e "${BOLD}║${NC}${col1}$(printf '%36s' '')${BOLD}║${NC}"
+    fi
+}
+
+print_category_header() {
+    local icon="$1"
+    local name="$2"
+    echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  ${CYAN}${icon} ${name}${NC}$(printf '%*s' $((64 - ${#name})) '')${BOLD}║${NC}"
+    echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════╣${NC}"
+}
+
+print_items_two_col() {
+    local -a items=("$@")
+    local count=${#items[@]}
+    local i=0
+    while (( i < count )); do
+        local col1="${items[$i]}"
+        local col2=""
+        if (( i + 1 < count )); then
+            col2="${items[$((i+1))]}"
+        fi
+        print_menu_row "$col1" "$col2"
+        i=$((i + 2))
+    done
+}
+
+show_menu_page() {
+    local page="$1"
+    local total_pages=4
+    
     print_banner
     echo ""
-    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BOLD}║          📦 ESCOLHA AS FERRAMENTAS PARA INSTALAR               ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}║  ${CYAN}🔧 INFRAESTRUTURA${NC}${BOLD}                                             ║${NC}"
-    echo -e "${BOLD}║${NC}   1) 🔀 Traefik (Proxy Reverso)                                ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}   2) 🐳 Portainer (Docker Manager)                             ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}   3) 📦 MinIO (Storage S3)                                     ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}   4) 🔔 Ntfy (Notificações)                                    ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}   5) 📄 Gotenberg (PDF API)                                    ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}   6) 📨 RabbitMQ (Message Broker)                              ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}   7) 🌐 Browserless (Chrome Headless)                          ${BOLD}║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  ${CYAN}💬 CHAT & WHATSAPP${NC}${BOLD}                                            ║${NC}"
-    echo -e "${BOLD}║${NC}   8) 💬 Chatwoot (Atendimento)                                 ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}   9) 📱 Evolution API (WhatsApp)                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  10) 📲 WppConnect (WhatsApp)                                  ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  11) 💭 Quepasa API (WhatsApp)                                 ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  12) ✉️  Uno API (Mensagens)                                    ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  13) 📡 Wuzapi (WhatsApp REST)                                 ${BOLD}║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  ${CYAN}⚡ AUTOMAÇÃO${NC}${BOLD}                                                  ║${NC}"
-    echo -e "${BOLD}║${NC}  14) 🔄 N8N (Workflows)                                        ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  15) 🤖 Typebot (Chatbots)                                     ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  16) 📧 Mautic (Marketing)                                     ${BOLD}║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  ${CYAN}🧠 INTELIGÊNCIA ARTIFICIAL${NC}${BOLD}                                    ║${NC}"
-    echo -e "${BOLD}║${NC}  17) 🌊 Flowise (LLM Builder)                                  ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  18) 🤖 Dify AI (IA Platform)                                  ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  19) 🦙 Ollama (LLMs Locais)                                   ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  20) 🔗 LangFlow (LangChain)                                   ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  21) 📊 Langfuse (LLM Obs.)                                    ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  22) 📚 Anything LLM (Chat Docs)                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  23) 🔍 Qdrant (Vector DB)                                     ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  24) 🧬 ZEP (IA Memory)                                        ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  25) 🧪 Evo AI (IA Evolutiva)                                  ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  26) ⚡ Bolt (Dev com IA)                                      ${BOLD}║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  ${CYAN}📋 CRM & PROJETOS${NC}${BOLD}                                             ║${NC}"
-    echo -e "${BOLD}║${NC}  27) 🐕 Woofed CRM                                             ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  28) 🏢 TwentyCRM                                              ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  29) 📈 Krayin CRM                                             ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  30) 📁 OpenProject                                            ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  31) 📌 Planka (Kanban)                                        ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  32) 📋 Focalboard                                             ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  33) 🎫 GLPI (Help Desk)                                       ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  34) 📝 Formbricks (Forms)                                     ${BOLD}║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  ${CYAN}🗄️  DATABASE & ADMIN${NC}${BOLD}                                          ║${NC}"
-    echo -e "${BOLD}║${NC}  35) 🐘 PgAdmin 4                                              ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  36) 🍃 MongoDB                                                ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  37) ⚡ Supabase                                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  38) 🐬 PhpMyAdmin                                             ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  39) 📊 NocoDB                                                 ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  40) 📊 Baserow                                                ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  41) 📊 Nocobase                                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  42) 🏠 ClickHouse                                             ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  43) 🔴 RedisInsight                                           ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  44) 📈 Metabase                                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  ${CYAN}🌐 CMS & SITES${NC}${BOLD}                                                ║${NC}"
-    echo -e "${BOLD}║${NC}  45) 📰 WordPress                                              ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  46) 🎯 Directus                                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  47) 🚀 Strapi                                                 ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  48) ☁️  NextCloud                                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  49) 📖 Wiki.js                                                ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  50) 👥 HumHub                                                 ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  51) 📝 Outline                                                ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  52) 🎓 Moodle                                                 ${BOLD}║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  ${CYAN}📡 MONITORAMENTO${NC}${BOLD}                                              ║${NC}"
-    echo -e "${BOLD}║${NC}  53) ⬆️  Uptime Kuma                                            ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  54) 📊 Grafana                                                ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  55) 🔥 Prometheus                                             ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  56) 📦 cAdvisor                                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  57) 📍 Traccar (GPS)                                          ${BOLD}║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  ${CYAN}🛠️  PRODUTIVIDADE${NC}${BOLD}                                              ║${NC}"
-    echo -e "${BOLD}║${NC}  58) 📅 Cal.com (Agenda)                                       ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  59) 🏗️  Appsmith                                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  60) 🔧 LowCoder                                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  61) 🔨 ToolJet                                                ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  62) ✏️  Excalidraw                                              ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  63) 📄 Docuseal                                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  64) 📄 Documeso                                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  65) 📑 Stirling PDF                                           ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  66) 📅 Easy!Appointments                                      ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  67) 🧠 WiseMapping                                            ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  68) ✨ Affine                                                 ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  69) 💬 Mattermost                                             ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  70) 🏭 Odoo                                                   ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  71) 🔧 Frappe                                                 ${BOLD}║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  ${CYAN}🔒 SEGURANÇA${NC}${BOLD}                                                  ║${NC}"
-    echo -e "${BOLD}║${NC}  72) 🔑 Keycloak (IAM)                                         ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  73) 🔐 VaultWarden (Senhas)                                   ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  74) 🗝️  Passbolt (Senhas Equipe)                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  ${CYAN}📦 OUTROS${NC}${BOLD}                                                     ║${NC}"
-    echo -e "${BOLD}║${NC}  75) 🤖 Botpress (Chatbot)                                     ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  76) 🔗 Yourls (URL Shortener)                                 ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  77) 🕷️  Firecrawl (Scraping)                                   ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  78) 📻 AzuraCast (Rádio)                                      ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  79) 🔗 Shlink (URLs + Analytics)                              ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  80) 🖥️  RustDesk (Acesso Remoto)                               ${BOLD}║${NC}"
-    echo -e "${BOLD}║${NC}  81) 🧪 Hoppscotch (API Client)                                ${BOLD}║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}║   ${GREEN}0) ✅ INSTALAR TUDO${NC}              ${RED}99) ❌ Sair${NC}${BOLD}                ║${NC}"
-    echo -e "${BOLD}║                                                                ║${NC}"
-    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${BOLD}╔════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║         📦 ESCOLHA AS FERRAMENTAS PARA INSTALAR  ${CYAN}[Página ${page}/${total_pages}]${NC}${BOLD}       ║${NC}"
+    echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════╣${NC}"
+    
+    if [[ -n "$SELECTED_TOOLS" ]]; then
+        echo -e "${BOLD}║  ${GREEN}Selecionados: ${SELECTED_TOOLS}${NC}$(printf '%*s' $((52 - ${#SELECTED_TOOLS})) '')${BOLD}║${NC}"
+    fi
+    
+    local -a items=()
+    
+    case $page in
+        1)
+            print_category_header "🔧" "INFRAESTRUTURA"
+            items=()
+            items+=("$(print_menu_item 1 '🔀' 'Traefik (Proxy Reverso)')")
+            items+=("$(print_menu_item 2 '🐳' 'Portainer (Docker)')")
+            items+=("$(print_menu_item 3 '📦' 'MinIO (Storage S3)')")
+            items+=("$(print_menu_item 4 '🔔' 'Ntfy (Notificações)')")
+            items+=("$(print_menu_item 5 '📄' 'Gotenberg (PDF API)')")
+            items+=("$(print_menu_item 6 '📨' 'RabbitMQ (Broker)')")
+            items+=("$(print_menu_item 7 '🌐' 'Browserless (Headless)')")
+            print_items_two_col "${items[@]}"
+            
+            print_category_header "💬" "CHAT & WHATSAPP"
+            items=()
+            items+=("$(print_menu_item 8 '💬' 'Chatwoot (Atendimento)')")
+            items+=("$(print_menu_item 9 '📱' 'Evolution API (WhatsApp)')")
+            items+=("$(print_menu_item 10 '📲' 'WppConnect (WhatsApp)')")
+            items+=("$(print_menu_item 11 '💭' 'Quepasa API (WhatsApp)')")
+            items+=("$(print_menu_item 12 '✉️' 'Uno API (Mensagens)')")
+            items+=("$(print_menu_item 13 '📡' 'Wuzapi (WhatsApp REST)')")
+            print_items_two_col "${items[@]}"
+            
+            print_category_header "⚡" "AUTOMAÇÃO"
+            items=()
+            items+=("$(print_menu_item 14 '🔄' 'N8N (Workflows)')")
+            items+=("$(print_menu_item 15 '🤖' 'Typebot (Chatbots)')")
+            items+=("$(print_menu_item 16 '📧' 'Mautic (Marketing)')")
+            print_items_two_col "${items[@]}"
+            ;;
+        2)
+            print_category_header "🧠" "INTELIGÊNCIA ARTIFICIAL"
+            items=()
+            items+=("$(print_menu_item 17 '🌊' 'Flowise (LLM Builder)')")
+            items+=("$(print_menu_item 18 '🤖' 'Dify AI (IA Platform)')")
+            items+=("$(print_menu_item 19 '🦙' 'Ollama (LLMs Locais)')")
+            items+=("$(print_menu_item 20 '🔗' 'LangFlow (LangChain)')")
+            items+=("$(print_menu_item 21 '📊' 'Langfuse (LLM Obs.)')")
+            items+=("$(print_menu_item 22 '📚' 'Anything LLM (Docs)')")
+            items+=("$(print_menu_item 23 '🔍' 'Qdrant (Vector DB)')")
+            items+=("$(print_menu_item 24 '🧬' 'ZEP (IA Memory)')")
+            items+=("$(print_menu_item 25 '🧪' 'Evo AI (IA Evolutiva)')")
+            items+=("$(print_menu_item 26 '⚡' 'Bolt (Dev com IA)')")
+            print_items_two_col "${items[@]}"
+            
+            print_category_header "📋" "CRM & PROJETOS"
+            items=()
+            items+=("$(print_menu_item 27 '🐕' 'Woofed CRM')")
+            items+=("$(print_menu_item 28 '🏢' 'TwentyCRM')")
+            items+=("$(print_menu_item 29 '📈' 'Krayin CRM')")
+            items+=("$(print_menu_item 30 '📁' 'OpenProject')")
+            items+=("$(print_menu_item 31 '📌' 'Planka (Kanban)')")
+            items+=("$(print_menu_item 32 '📋' 'Focalboard')")
+            items+=("$(print_menu_item 33 '🎫' 'GLPI (Help Desk)')")
+            items+=("$(print_menu_item 34 '📝' 'Formbricks (Forms)')")
+            print_items_two_col "${items[@]}"
+            ;;
+        3)
+            print_category_header "🗄️" "DATABASE & ADMIN"
+            items=()
+            items+=("$(print_menu_item 35 '🐘' 'PgAdmin 4')")
+            items+=("$(print_menu_item 36 '🍃' 'MongoDB')")
+            items+=("$(print_menu_item 37 '⚡' 'Supabase')")
+            items+=("$(print_menu_item 38 '🐬' 'PhpMyAdmin')")
+            items+=("$(print_menu_item 39 '📊' 'NocoDB')")
+            items+=("$(print_menu_item 40 '📊' 'Baserow')")
+            items+=("$(print_menu_item 41 '📊' 'Nocobase')")
+            items+=("$(print_menu_item 42 '🏠' 'ClickHouse')")
+            items+=("$(print_menu_item 43 '🔴' 'RedisInsight')")
+            items+=("$(print_menu_item 44 '📈' 'Metabase')")
+            print_items_two_col "${items[@]}"
+            
+            print_category_header "🌐" "CMS & SITES"
+            items=()
+            items+=("$(print_menu_item 45 '📰' 'WordPress')")
+            items+=("$(print_menu_item 46 '🎯' 'Directus')")
+            items+=("$(print_menu_item 47 '🚀' 'Strapi')")
+            items+=("$(print_menu_item 48 '☁️' 'NextCloud')")
+            items+=("$(print_menu_item 49 '📖' 'Wiki.js')")
+            items+=("$(print_menu_item 50 '👥' 'HumHub')")
+            items+=("$(print_menu_item 51 '📝' 'Outline')")
+            items+=("$(print_menu_item 52 '🎓' 'Moodle')")
+            print_items_two_col "${items[@]}"
+            ;;
+        4)
+            print_category_header "📡" "MONITORAMENTO"
+            items=()
+            items+=("$(print_menu_item 53 '⬆️' 'Uptime Kuma')")
+            items+=("$(print_menu_item 54 '📊' 'Grafana')")
+            items+=("$(print_menu_item 55 '🔥' 'Prometheus')")
+            items+=("$(print_menu_item 56 '📦' 'cAdvisor')")
+            items+=("$(print_menu_item 57 '📍' 'Traccar (GPS)')")
+            print_items_two_col "${items[@]}"
+            
+            print_category_header "🛠️" "PRODUTIVIDADE"
+            items=()
+            items+=("$(print_menu_item 58 '📅' 'Cal.com (Agenda)')")
+            items+=("$(print_menu_item 59 '🏗️' 'Appsmith')")
+            items+=("$(print_menu_item 60 '🔧' 'LowCoder')")
+            items+=("$(print_menu_item 61 '🔨' 'ToolJet')")
+            items+=("$(print_menu_item 62 '✏️' 'Excalidraw')")
+            items+=("$(print_menu_item 63 '📄' 'Docuseal')")
+            items+=("$(print_menu_item 64 '📄' 'Documeso')")
+            items+=("$(print_menu_item 65 '📑' 'Stirling PDF')")
+            items+=("$(print_menu_item 66 '📅' 'Easy!Appointments')")
+            items+=("$(print_menu_item 67 '🧠' 'WiseMapping')")
+            items+=("$(print_menu_item 68 '✨' 'Affine')")
+            items+=("$(print_menu_item 69 '💬' 'Mattermost')")
+            items+=("$(print_menu_item 70 '🏭' 'Odoo')")
+            items+=("$(print_menu_item 71 '🔧' 'Frappe')")
+            print_items_two_col "${items[@]}"
+            
+            print_category_header "🔒" "SEGURANÇA"
+            items=()
+            items+=("$(print_menu_item 72 '🔑' 'Keycloak (IAM)')")
+            items+=("$(print_menu_item 73 '🔐' 'VaultWarden (Senhas)')")
+            items+=("$(print_menu_item 74 '🗝️' 'Passbolt (Equipe)')")
+            print_items_two_col "${items[@]}"
+            
+            print_category_header "📦" "OUTROS"
+            items=()
+            items+=("$(print_menu_item 75 '🤖' 'Botpress (Chatbot)')")
+            items+=("$(print_menu_item 76 '🔗' 'Yourls (URL Shortener)')")
+            items+=("$(print_menu_item 77 '🕷️' 'Firecrawl (Scraping)')")
+            items+=("$(print_menu_item 78 '📻' 'AzuraCast (Rádio)')")
+            items+=("$(print_menu_item 79 '🔗' 'Shlink (URLs)')")
+            items+=("$(print_menu_item 80 '🖥️' 'RustDesk (Remoto)')")
+            items+=("$(print_menu_item 81 '🧪' 'Hoppscotch (API)')")
+            print_items_two_col "${items[@]}"
+            ;;
+    esac
+    
+    echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║                                                                      ║${NC}"
+    local nav=""
+    if (( page > 1 )); then
+        nav="${nav}${YELLOW}[P] ◀ Anterior${NC}   "
+    fi
+    if (( page < total_pages )); then
+        nav="${nav}${YELLOW}[N] Próxima ▶${NC}   "
+    fi
+    nav="${nav}${GREEN}[0] ✅ Instalar tudo${NC}   ${RED}[99] ❌ Sair${NC}"
+    echo -e "${BOLD}║${NC}  ${nav}${BOLD}  ║${NC}"
+    echo -e "${BOLD}║  ${CYAN}[C] ✅ Confirmar e instalar selecionados${NC}${BOLD}                              ║${NC}"
+    echo -e "${BOLD}║                                                                      ║${NC}"
+    echo -e "${BOLD}╚════════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "  Digite os números separados por espaço (ex: ${CYAN}1 8 9 14 15${NC})"
-    read -rp "  > " choices
+}
+
+show_menu() {
+    local current_page=1
+    SELECTED_TOOLS=""
+    
+    while true; do
+        show_menu_page "$current_page"
+        
+        echo -e "  Digite os números separados por espaço, ou ${CYAN}N/P/C/0/99${NC}"
+        read -rp "  > " input
+        
+        case "${input^^}" in
+            N)
+                if (( current_page < 4 )); then
+                    current_page=$((current_page + 1))
+                fi
+                ;;
+            P)
+                if (( current_page > 1 )); then
+                    current_page=$((current_page - 1))
+                fi
+                ;;
+            99)
+                choices="99"
+                return
+                ;;
+            0)
+                choices="0"
+                return
+                ;;
+            C)
+                if [[ -n "$SELECTED_TOOLS" ]]; then
+                    choices="$SELECTED_TOOLS"
+                    return
+                else
+                    echo -e "  ${RED}Nenhuma ferramenta selecionada!${NC}"
+                    sleep 1
+                fi
+                ;;
+            *)
+                for num in $input; do
+                    if [[ "$num" =~ ^[0-9]+$ ]] && (( num >= 1 && num <= 81 )); then
+                        if echo " $SELECTED_TOOLS " | grep -q " $num "; then
+                            SELECTED_TOOLS=$(echo "$SELECTED_TOOLS" | sed "s/\b$num\b//g" | xargs)
+                        else
+                            SELECTED_TOOLS="$SELECTED_TOOLS $num"
+                            SELECTED_TOOLS=$(echo "$SELECTED_TOOLS" | xargs)
+                        fi
+                    fi
+                done
+                ;;
+        esac
+    done
 }
 
 # ======================== MAPEAMENTO DE INSTALAÇÃO ========================
@@ -2040,6 +2579,7 @@ show_main_menu() {
     echo -e "  ${YELLOW}3)${NC} 🔧 Gerenciar ferramentas (start/stop/restart/logs/update)"
     echo -e "  ${RED}4)${NC} 🗑️  Desinstalar ferramentas"
     echo -e "  ${BLUE}5)${NC} 💾 Restaurar backup"
+    echo -e "  ${WHITE}6)${NC} 🔑 Ver credenciais salvas"
     echo -e "  ${MAGENTA}99)${NC} Sair"
     echo ""
     read -rp "> " main_choice
@@ -2076,6 +2616,11 @@ main() {
                     choices=$(seq 1 81 | tr '\n' ' ')
                 fi
                 
+                # Resolver dependências automaticamente
+                echo ""
+                choices=$(resolve_dependencies "$choices")
+                echo ""
+                
                 # Perguntar subdomínio individual de cada ferramenta
                 if ! ask_subdomains "$choices"; then
                     continue
@@ -2111,6 +2656,21 @@ main() {
                 echo -e "${GREEN}║                                                            ║${NC}"
                 echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
                 echo ""
+                
+                # Exibir resumo final com credenciais salvas
+                if [[ -f "$CREDENTIALS_FILE" ]]; then
+                    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
+                    echo -e "${BOLD}║  📋 RESUMO GERAL — TODAS AS CREDENCIAIS                       ║${NC}"
+                    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+                    echo -e "${BOLD}║  📁 Salvas em: ${CYAN}/root/vemfazer-credenciais.txt${NC}${BOLD}                 ║${NC}"
+                    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
+                    echo ""
+                    cat "$CREDENTIALS_FILE"
+                    echo ""
+                    echo -e "${YELLOW}⚠️  IMPORTANTE: Guarde essas credenciais em local seguro!${NC}"
+                    echo -e "${YELLOW}   Arquivo salvo em: ${CYAN}/root/vemfazer-credenciais.txt${NC}"
+                fi
+                echo ""
                 read -rp "$(echo -e ${CYAN}'Pressione ENTER para continuar...'${NC})" _
                 ;;
             2)
@@ -2126,6 +2686,22 @@ main() {
                 ;;
             5)
                 restore_backup
+                echo ""
+                read -rp "$(echo -e ${CYAN}'Pressione ENTER para continuar...'${NC})" _
+                ;;
+            6)
+                echo ""
+                if [[ -f "$CREDENTIALS_FILE" ]]; then
+                    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
+                    echo -e "${BOLD}║  🔑 CREDENCIAIS SALVAS                                        ║${NC}"
+                    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+                    echo -e "${BOLD}║  📁 Arquivo: ${CYAN}/root/vemfazer-credenciais.txt${NC}${BOLD}                    ║${NC}"
+                    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
+                    echo ""
+                    cat "$CREDENTIALS_FILE"
+                else
+                    echo -e "${YELLOW}⚠️  Nenhuma credencial salva ainda. Instale ferramentas primeiro.${NC}"
+                fi
                 echo ""
                 read -rp "$(echo -e ${CYAN}'Pressione ENTER para continuar...'${NC})" _
                 ;;
