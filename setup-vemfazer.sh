@@ -38,10 +38,10 @@ BOLD='\033[1m'
 # ======================== VARIÁVEIS GLOBAIS ========================
 DOCKER_COMPOSE_DIR="/opt/vemfazer"
 VERSION="1.0.0"
-DOMAIN=""
 EMAIL=""
 TRAEFIK_INSTALLED=false
 ACCEPTED_TERMS=false
+declare -A TOOL_DOMAINS
 
 # ======================== FUNÇÕES UTILITÁRIAS ========================
 
@@ -288,16 +288,94 @@ setup_initial() {
     echo -e "${BOLD}Configuração Inicial${NC}"
     echo "─────────────────────────────────────"
     
-    read -rp "$(echo -e ${CYAN}'Digite seu domínio principal (ex: meudominio.com): '${NC})" DOMAIN
     read -rp "$(echo -e ${CYAN}'Digite seu e-mail (para SSL Let'\''s Encrypt): '${NC})" EMAIL
     
-    if [[ -z "$DOMAIN" || -z "$EMAIL" ]]; then
-        log_error "Domínio e e-mail são obrigatórios!"
+    if [[ -z "$EMAIL" ]]; then
+        log_error "E-mail é obrigatório!"
         exit 1
     fi
     
     mkdir -p "$DOCKER_COMPOSE_DIR"
     log_success "Configuração inicial concluída!"
+}
+
+# ======================== MAPA DE SUBDOMÍNIOS PADRÃO ========================
+
+declare -A TOOL_DEFAULT_SUBDOMAIN=(
+    [1]="traefik" [2]="portainer" [3]="minio" [4]="ntfy" [5]="gotenberg"
+    [6]="rabbitmq" [7]="browserless" [8]="chatwoot" [9]="evolution"
+    [10]="wppconnect" [11]="quepasa" [12]="unoapi" [13]="wuzapi"
+    [14]="n8n" [15]="typebot" [16]="mautic" [17]="flowise" [18]="dify"
+    [19]="ollama" [20]="langflow" [21]="langfuse" [22]="anythingllm"
+    [23]="qdrant" [24]="zep" [25]="evoai" [26]="bolt" [27]="woofed"
+    [28]="twentycrm" [29]="krayin" [30]="openproject" [31]="planka"
+    [32]="focalboard" [33]="glpi" [34]="formbricks" [35]="pgadmin"
+    [36]="mongodb" [37]="supabase" [38]="phpmyadmin" [39]="nocodb"
+    [40]="baserow" [41]="nocobase" [42]="clickhouse" [43]="redisinsight"
+    [44]="metabase" [45]="wordpress" [46]="directus" [47]="strapi"
+    [48]="nextcloud" [49]="wiki" [50]="humhub" [51]="outline"
+    [52]="moodle" [53]="uptime" [54]="grafana" [55]="prometheus"
+    [56]="cadvisor" [57]="traccar" [58]="calcom" [59]="appsmith"
+    [60]="lowcoder" [61]="tooljet" [62]="excalidraw" [63]="docuseal"
+    [64]="documeso" [65]="pdf" [66]="appointments" [67]="wisemapping"
+    [68]="affine" [69]="mattermost" [70]="odoo" [71]="frappe"
+    [72]="keycloak" [73]="vault" [74]="passbolt" [75]="botpress"
+    [76]="yourls" [77]="firecrawl" [78]="radio" [79]="shlink"
+    [80]="rustdesk" [81]="hoppscotch"
+)
+
+ask_subdomains() {
+    local selected_tools="$1"
+    
+    echo ""
+    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║  📋 Configuração de Subdomínios                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  Digite o domínio completo para cada ferramenta selecionada.    ║${NC}"
+    echo -e "${BOLD}║  Ex: n8n.meudominio.com                                        ║${NC}"
+    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    for num in $selected_tools; do
+        local name="${TOOL_NAME_MAP[$num]}"
+        local default_sub="${TOOL_DEFAULT_SUBDOMAIN[$num]}"
+        
+        [[ -z "$name" ]] && continue
+        
+        # Typebot precisa de 2 subdomínios
+        if [[ "$num" == "15" ]]; then
+            echo -e "  ${CYAN}📦 ${name} (Builder)${NC}"
+            read -rp "     Subdomínio (ex: typebot.meudominio.com): " typebot_builder_domain
+            TOOL_DOMAINS["typebot"]="$typebot_builder_domain"
+            echo ""
+            echo -e "  ${CYAN}📦 ${name} (Viewer)${NC}"
+            read -rp "     Subdomínio (ex: bot.meudominio.com): " typebot_viewer_domain
+            TOOL_DOMAINS["typebot-viewer"]="$typebot_viewer_domain"
+            echo ""
+            continue
+        fi
+        
+        echo -e "  ${CYAN}📦 ${name}${NC}"
+        read -rp "     Subdomínio (ex: ${default_sub}.meudominio.com): " tool_domain
+        TOOL_DOMAINS["$default_sub"]="$tool_domain"
+        echo ""
+    done
+    
+    # Resumo
+    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║  ✅ Resumo dos Subdomínios Configurados                        ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    for key in "${!TOOL_DOMAINS[@]}"; do
+        printf "${BOLD}║${NC}  %-18s → ${GREEN}%s${NC}\n" "$key" "${TOOL_DOMAINS[$key]}"
+    done
+    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    read -rp "$(echo -e ${YELLOW}'Confirmar e prosseguir com a instalação? [S/n]: '${NC})" confirm_domains
+    if [[ "${confirm_domains,,}" == "n" ]]; then
+        log_info "Instalação cancelada."
+        return 1
+    fi
+    return 0
 }
 
 # ======================== GERAÇÃO DE SENHAS ========================
@@ -311,12 +389,24 @@ generate_password() {
 install_traefik() {
     log_info "Instalando Traefik (proxy reverso)..."
     
+    local traefik_domain="${TOOL_DOMAINS[traefik]:-}"
     local dir="$DOCKER_COMPOSE_DIR/traefik"
     mkdir -p "$dir" "$dir/letsencrypt"
     touch "$dir/letsencrypt/acme.json"
     chmod 600 "$dir/letsencrypt/acme.json"
     
     docker network create proxy 2>/dev/null || true
+    
+    local dashboard_labels=""
+    if [[ -n "$traefik_domain" ]]; then
+        dashboard_labels="    labels:
+      - \"traefik.enable=true\"
+      - \"traefik.http.routers.traefik.rule=Host(\`${traefik_domain}\`)\"
+      - \"traefik.http.routers.traefik.entrypoints=websecure\"
+      - \"traefik.http.routers.traefik.tls.certresolver=letsencrypt\"
+      - \"traefik.http.services.traefik.loadbalancer.server.port=8080\"
+      - \"traefik.http.routers.traefik.service=api@internal\""
+    fi
     
     cat > "$dir/docker-compose.yml" << EOF
 version: '3.8'
@@ -345,13 +435,7 @@ services:
       - ./letsencrypt:/letsencrypt
     networks:
       - proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(\`traefik.${DOMAIN}\`)"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
-      - "traefik.http.routers.traefik.service=api@internal"
+${dashboard_labels}
 
 networks:
   proxy:
@@ -360,7 +444,11 @@ EOF
 
     cd "$dir" && docker compose up -d
     TRAEFIK_INSTALLED=true
-    log_success "Traefik instalado! Dashboard: https://traefik.${DOMAIN}"
+    if [[ -n "$traefik_domain" ]]; then
+        log_success "Traefik instalado! Dashboard: https://${traefik_domain}"
+    else
+        log_success "Traefik instalado!"
+    fi
 }
 
 # ======================== FUNÇÃO GENÉRICA DE INSTALAÇÃO ========================
@@ -373,6 +461,8 @@ install_service() {
     local extra_env="${5:-}"
     local extra_volumes="${6:-}"
     local extra_config="${7:-}"
+    
+    local full_domain="${TOOL_DOMAINS[$subdomain]:-$subdomain.exemplo.com}"
     
     log_info "Instalando ${name}..."
     
@@ -406,7 +496,7 @@ ${extra_config}
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.${subdomain}.rule=Host(\`${subdomain}.${DOMAIN}\`)"
+      - "traefik.http.routers.${subdomain}.rule=Host(\`${full_domain}\`)"
       - "traefik.http.routers.${subdomain}.entrypoints=websecure"
       - "traefik.http.routers.${subdomain}.tls.certresolver=letsencrypt"
       - "traefik.http.services.${subdomain}.loadbalancer.server.port=${port}"
@@ -417,7 +507,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "${name} instalado! Acesse: https://${subdomain}.${DOMAIN}"
+    log_success "${name} instalado! Acesse: https://${full_domain}"
 }
 
 # ======================== FUNÇÕES DE INSTALAÇÃO ESPECÍFICAS ========================
@@ -464,6 +554,7 @@ install_browserless() {
 }
 
 install_chatwoot() {
+    local CHATWOOT_DOMAIN="${TOOL_DOMAINS[chatwoot]:-chatwoot.exemplo.com}"
     local secret
     secret=$(generate_password 32)
     local dir="$DOCKER_COMPOSE_DIR/chatwoot"
@@ -502,7 +593,7 @@ services:
       - chatwoot-redis
     environment:
       SECRET_KEY_BASE: $(generate_password 64)
-      FRONTEND_URL: https://chatwoot.${DOMAIN}
+      FRONTEND_URL: https://${CHATWOOT_DOMAIN}
       DATABASE_URL: postgres://chatwoot:${secret}@chatwoot-db:5432/chatwoot
       REDIS_URL: redis://chatwoot-redis:6379
       RAILS_ENV: production
@@ -512,7 +603,7 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.chatwoot.rule=Host(\`chatwoot.${DOMAIN}\`)"
+      - "traefik.http.routers.chatwoot.rule=Host(\`${CHATWOOT_DOMAIN}\`)"
       - "traefik.http.routers.chatwoot.entrypoints=websecure"
       - "traefik.http.routers.chatwoot.tls.certresolver=letsencrypt"
       - "traefik.http.services.chatwoot.loadbalancer.server.port=3000"
@@ -526,7 +617,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Chatwoot instalado! Acesse: https://chatwoot.${DOMAIN}"
+    log_success "Chatwoot instalado! Acesse: https://${CHATWOOT_DOMAIN}"
 }
 
 install_evolution_api() {
@@ -539,11 +630,13 @@ install_evolution_api() {
 
 install_n8n() {
     install_service "N8N" "n8n" "docker.n8n.io/n8nio/n8n:latest" "5678" \
-        "      N8N_HOST: n8n.${DOMAIN}\n      N8N_PROTOCOL: https\n      WEBHOOK_URL: https://n8n.${DOMAIN}/" \
+        "      N8N_HOST: ${TOOL_DOMAINS[n8n]}\n      N8N_PROTOCOL: https\n      WEBHOOK_URL: https://${TOOL_DOMAINS[n8n]}/" \
         "      - n8n_data:/home/node/.n8n"
 }
 
 install_typebot() {
+    local TYPEBOT_BUILDER_DOMAIN="${TOOL_DOMAINS[typebot]:-typebot.exemplo.com}"
+    local TYPEBOT_VIEWER_DOMAIN="${TOOL_DOMAINS[typebot-viewer]:-bot.exemplo.com}"
     local secret
     secret=$(generate_password 32)
     local dir="$DOCKER_COMPOSE_DIR/typebot"
@@ -574,15 +667,15 @@ services:
       - typebot-db
     environment:
       DATABASE_URL: postgres://typebot:${secret}@typebot-db:5432/typebot
-      NEXTAUTH_URL: https://typebot.${DOMAIN}
-      NEXT_PUBLIC_VIEWER_URL: https://bot.${DOMAIN}
+      NEXTAUTH_URL: https://${TYPEBOT_BUILDER_DOMAIN}
+      NEXT_PUBLIC_VIEWER_URL: https://${TYPEBOT_VIEWER_DOMAIN}
       ENCRYPTION_SECRET: $(generate_password 32)
       NEXTAUTH_SECRET: $(generate_password 32)
     networks:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.typebot.rule=Host(\`typebot.${DOMAIN}\`)"
+      - "traefik.http.routers.typebot.rule=Host(\`${TYPEBOT_BUILDER_DOMAIN}\`)"
       - "traefik.http.routers.typebot.entrypoints=websecure"
       - "traefik.http.routers.typebot.tls.certresolver=letsencrypt"
       - "traefik.http.services.typebot.loadbalancer.server.port=3000"
@@ -595,14 +688,14 @@ services:
       - typebot-db
     environment:
       DATABASE_URL: postgres://typebot:${secret}@typebot-db:5432/typebot
-      NEXTAUTH_URL: https://typebot.${DOMAIN}
-      NEXT_PUBLIC_VIEWER_URL: https://bot.${DOMAIN}
+      NEXTAUTH_URL: https://${TYPEBOT_BUILDER_DOMAIN}
+      NEXT_PUBLIC_VIEWER_URL: https://${TYPEBOT_VIEWER_DOMAIN}
       ENCRYPTION_SECRET: $(generate_password 32)
     networks:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.typebot-viewer.rule=Host(\`bot.${DOMAIN}\`)"
+      - "traefik.http.routers.typebot-viewer.rule=Host(\`${TYPEBOT_VIEWER_DOMAIN}\`)"
       - "traefik.http.routers.typebot-viewer.entrypoints=websecure"
       - "traefik.http.routers.typebot-viewer.tls.certresolver=letsencrypt"
       - "traefik.http.services.typebot-viewer.loadbalancer.server.port=3000"
@@ -616,10 +709,11 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Typebot instalado! Builder: https://typebot.${DOMAIN} | Viewer: https://bot.${DOMAIN}"
+    log_success "Typebot instalado! Builder: https://${TYPEBOT_BUILDER_DOMAIN} | Viewer: https://${TYPEBOT_VIEWER_DOMAIN}"
 }
 
 install_mautic() {
+    local MAUTIC_DOMAIN="${TOOL_DOMAINS[mautic]:-mautic.exemplo.com}"
     local pwd
     pwd=$(generate_password)
     local dir="$DOCKER_COMPOSE_DIR/mautic"
@@ -660,7 +754,7 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mautic.rule=Host(\`mautic.${DOMAIN}\`)"
+      - "traefik.http.routers.mautic.rule=Host(\`${MAUTIC_DOMAIN}\`)"
       - "traefik.http.routers.mautic.entrypoints=websecure"
       - "traefik.http.routers.mautic.tls.certresolver=letsencrypt"
       - "traefik.http.services.mautic.loadbalancer.server.port=80"
@@ -675,7 +769,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Mautic instalado! Acesse: https://mautic.${DOMAIN}"
+    log_success "Mautic instalado! Acesse: https://${MAUTIC_DOMAIN}"
 }
 
 install_flowise() {
@@ -707,6 +801,7 @@ install_langflow() {
 }
 
 install_langfuse() {
+    local LANGFUSE_DOMAIN="${TOOL_DOMAINS[langfuse]:-langfuse.exemplo.com}"
     local pwd
     pwd=$(generate_password)
     local dir="$DOCKER_COMPOSE_DIR/langfuse"
@@ -738,13 +833,13 @@ services:
     environment:
       DATABASE_URL: postgres://langfuse:${pwd}@langfuse-db:5432/langfuse
       NEXTAUTH_SECRET: $(generate_password 32)
-      NEXTAUTH_URL: https://langfuse.${DOMAIN}
+      NEXTAUTH_URL: https://${LANGFUSE_DOMAIN}
       SALT: $(generate_password 16)
     networks:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.langfuse.rule=Host(\`langfuse.${DOMAIN}\`)"
+      - "traefik.http.routers.langfuse.rule=Host(\`${LANGFUSE_DOMAIN}\`)"
       - "traefik.http.routers.langfuse.entrypoints=websecure"
       - "traefik.http.routers.langfuse.tls.certresolver=letsencrypt"
       - "traefik.http.services.langfuse.loadbalancer.server.port=3000"
@@ -758,7 +853,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Langfuse instalado! Acesse: https://langfuse.${DOMAIN}"
+    log_success "Langfuse instalado! Acesse: https://${LANGFUSE_DOMAIN}"
 }
 
 install_anything_llm() {
@@ -800,12 +895,12 @@ install_openproject() {
     local pwd
     pwd=$(generate_password)
     install_service "OpenProject" "openproject" "openproject/openproject:14" "8080" \
-        "      OPENPROJECT_SECRET_KEY_BASE: $(generate_password 64)\n      OPENPROJECT_HOST__NAME: openproject.${DOMAIN}\n      OPENPROJECT_HTTPS: true"
+        "      OPENPROJECT_SECRET_KEY_BASE: $(generate_password 64)\n      OPENPROJECT_HOST__NAME: ${TOOL_DOMAINS[openproject]}\n      OPENPROJECT_HTTPS: true"
 }
 
 install_planka() {
     install_service "Planka" "planka" "ghcr.io/plankanban/planka:latest" "1337" \
-        "      BASE_URL: https://planka.${DOMAIN}\n      SECRET_KEY: $(generate_password 64)\n      DEFAULT_ADMIN_EMAIL: ${EMAIL}\n      DEFAULT_ADMIN_PASSWORD: $(generate_password)"
+        "      BASE_URL: https://${TOOL_DOMAINS[planka]}\n      SECRET_KEY: $(generate_password 64)\n      DEFAULT_ADMIN_EMAIL: ${EMAIL}\n      DEFAULT_ADMIN_PASSWORD: $(generate_password)"
 }
 
 install_focalboard() {
@@ -813,6 +908,7 @@ install_focalboard() {
 }
 
 install_glpi() {
+    local GLPI_DOMAIN="${TOOL_DOMAINS[glpi]:-glpi.exemplo.com}"
     local dir="$DOCKER_COMPOSE_DIR/glpi"
     mkdir -p "$dir"
     local pwd
@@ -850,7 +946,7 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.glpi.rule=Host(\`glpi.${DOMAIN}\`)"
+      - "traefik.http.routers.glpi.rule=Host(\`${GLPI_DOMAIN}\`)"
       - "traefik.http.routers.glpi.entrypoints=websecure"
       - "traefik.http.routers.glpi.tls.certresolver=letsencrypt"
       - "traefik.http.services.glpi.loadbalancer.server.port=80"
@@ -865,12 +961,12 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "GLPI instalado! Acesse: https://glpi.${DOMAIN}"
+    log_success "GLPI instalado! Acesse: https://${GLPI_DOMAIN}"
 }
 
 install_formbricks() {
     install_service "Formbricks" "formbricks" "formbricks/formbricks:latest" "3000" \
-        "      WEBAPP_URL: https://formbricks.${DOMAIN}\n      NEXTAUTH_SECRET: $(generate_password 32)\n      ENCRYPTION_KEY: $(generate_password 32)"
+        "      WEBAPP_URL: https://${TOOL_DOMAINS[formbricks]}\n      NEXTAUTH_SECRET: $(generate_password 32)\n      ENCRYPTION_KEY: $(generate_password 32)"
 }
 
 install_pgadmin() {
@@ -917,7 +1013,7 @@ install_nocodb() {
 
 install_baserow() {
     install_service "Baserow" "baserow" "baserow/baserow:latest" "80" \
-        "      BASEROW_PUBLIC_URL: https://baserow.${DOMAIN}" \
+        "      BASEROW_PUBLIC_URL: https://${TOOL_DOMAINS[baserow]}" \
         "      - baserow_data:/baserow/data"
 }
 
@@ -939,6 +1035,7 @@ install_metabase() {
 }
 
 install_wordpress() {
+    local WORDPRESS_DOMAIN="${TOOL_DOMAINS[wordpress]:-wordpress.exemplo.com}"
     local pwd
     pwd=$(generate_password)
     local dir="$DOCKER_COMPOSE_DIR/wordpress"
@@ -979,7 +1076,7 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.wordpress.rule=Host(\`wordpress.${DOMAIN}\`)"
+      - "traefik.http.routers.wordpress.rule=Host(\`${WORDPRESS_DOMAIN}\`)"
       - "traefik.http.routers.wordpress.entrypoints=websecure"
       - "traefik.http.routers.wordpress.tls.certresolver=letsencrypt"
       - "traefik.http.services.wordpress.loadbalancer.server.port=80"
@@ -994,7 +1091,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "WordPress instalado! Acesse: https://wordpress.${DOMAIN}"
+    log_success "WordPress instalado! Acesse: https://${WORDPRESS_DOMAIN}"
 }
 
 install_directus() {
@@ -1013,12 +1110,13 @@ install_nextcloud() {
     local pwd
     pwd=$(generate_password)
     install_service "NextCloud" "nextcloud" "nextcloud:latest" "80" \
-        "      NEXTCLOUD_ADMIN_USER: admin\n      NEXTCLOUD_ADMIN_PASSWORD: ${pwd}\n      NEXTCLOUD_TRUSTED_DOMAINS: nextcloud.${DOMAIN}" \
+        "      NEXTCLOUD_ADMIN_USER: admin\n      NEXTCLOUD_ADMIN_PASSWORD: ${pwd}\n      NEXTCLOUD_TRUSTED_DOMAINS: ${TOOL_DOMAINS[nextcloud]}" \
         "      - nextcloud_data:/var/www/html"
     echo -e "  ${YELLOW}Senha NextCloud: ${pwd}${NC}"
 }
 
 install_wikijs() {
+    local WIKIJS_DOMAIN="${TOOL_DOMAINS[wiki]:-wiki.exemplo.com}"
     local pwd
     pwd=$(generate_password)
     local dir="$DOCKER_COMPOSE_DIR/wikijs"
@@ -1058,7 +1156,7 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.wikijs.rule=Host(\`wiki.${DOMAIN}\`)"
+      - "traefik.http.routers.wikijs.rule=Host(\`${WIKIJS_DOMAIN}\`)"
       - "traefik.http.routers.wikijs.entrypoints=websecure"
       - "traefik.http.routers.wikijs.tls.certresolver=letsencrypt"
       - "traefik.http.services.wikijs.loadbalancer.server.port=3000"
@@ -1072,7 +1170,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Wiki.js instalado! Acesse: https://wiki.${DOMAIN}"
+    log_success "Wiki.js instalado! Acesse: https://${WIKIJS_DOMAIN}"
 }
 
 install_humhub() {
@@ -1081,7 +1179,7 @@ install_humhub() {
 
 install_outline() {
     install_service "Outline" "outline" "outlinewiki/outline:latest" "3000" \
-        "      URL: https://outline.${DOMAIN}\n      SECRET_KEY: $(generate_password 32)\n      UTILS_SECRET: $(generate_password 32)"
+        "      URL: https://${TOOL_DOMAINS[outline]}\n      SECRET_KEY: $(generate_password 32)\n      UTILS_SECRET: $(generate_password 32)"
 }
 
 install_moodle() {
@@ -1106,6 +1204,7 @@ install_prometheus() {
 }
 
 install_cadvisor() {
+    local CADVISOR_DOMAIN="${TOOL_DOMAINS[cadvisor]:-cadvisor.exemplo.com}"
     local dir="$DOCKER_COMPOSE_DIR/cadvisor"
     mkdir -p "$dir"
 
@@ -1126,7 +1225,7 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.cadvisor.rule=Host(\`cadvisor.${DOMAIN}\`)"
+      - "traefik.http.routers.cadvisor.rule=Host(\`${CADVISOR_DOMAIN}\`)"
       - "traefik.http.routers.cadvisor.entrypoints=websecure"
       - "traefik.http.routers.cadvisor.tls.certresolver=letsencrypt"
       - "traefik.http.services.cadvisor.loadbalancer.server.port=8080"
@@ -1137,7 +1236,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "cAdvisor instalado! Acesse: https://cadvisor.${DOMAIN}"
+    log_success "cAdvisor instalado! Acesse: https://${CADVISOR_DOMAIN}"
 }
 
 install_traccar() {
@@ -1147,7 +1246,7 @@ install_traccar() {
 
 install_calcom() {
     install_service "Cal.com" "calcom" "calcom/cal.com:latest" "3000" \
-        "      NEXT_PUBLIC_WEBAPP_URL: https://calcom.${DOMAIN}\n      NEXTAUTH_SECRET: $(generate_password 32)\n      CALENDSO_ENCRYPTION_KEY: $(generate_password 32)"
+        "      NEXT_PUBLIC_WEBAPP_URL: https://${TOOL_DOMAINS[calcom]}\n      NEXTAUTH_SECRET: $(generate_password 32)\n      CALENDSO_ENCRYPTION_KEY: $(generate_password 32)"
 }
 
 install_appsmith() {
@@ -1161,7 +1260,7 @@ install_lowcoder() {
 
 install_tooljet() {
     install_service "ToolJet" "tooljet" "tooljet/tooljet-ce:latest" "80" \
-        "      TOOLJET_HOST: https://tooljet.${DOMAIN}\n      SECRET_KEY_BASE: $(generate_password 64)"
+        "      TOOLJET_HOST: https://${TOOL_DOMAINS[tooljet]}\n      SECRET_KEY_BASE: $(generate_password 64)"
 }
 
 install_excalidraw() {
@@ -1183,7 +1282,7 @@ install_stirling_pdf() {
 
 install_easy_appointments() {
     install_service "Easy!Appointments" "appointments" "alextselegidis/easyappointments:latest" "80" \
-        "      BASE_URL: https://appointments.${DOMAIN}"
+        "      BASE_URL: https://${TOOL_DOMAINS[appointments]}"
 }
 
 install_wisemapping() {
@@ -1200,6 +1299,7 @@ install_mattermost() {
 }
 
 install_odoo() {
+    local ODOO_DOMAIN="${TOOL_DOMAINS[odoo]:-odoo.exemplo.com}"
     local pwd
     pwd=$(generate_password)
     local dir="$DOCKER_COMPOSE_DIR/odoo"
@@ -1239,7 +1339,7 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.odoo.rule=Host(\`odoo.${DOMAIN}\`)"
+      - "traefik.http.routers.odoo.rule=Host(\`${ODOO_DOMAIN}\`)"
       - "traefik.http.routers.odoo.entrypoints=websecure"
       - "traefik.http.routers.odoo.tls.certresolver=letsencrypt"
       - "traefik.http.services.odoo.loadbalancer.server.port=8069"
@@ -1255,7 +1355,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d
-    log_success "Odoo instalado! Acesse: https://odoo.${DOMAIN}"
+    log_success "Odoo instalado! Acesse: https://${ODOO_DOMAIN}"
 }
 
 install_frappe() {
@@ -1266,7 +1366,7 @@ install_keycloak() {
     local pwd
     pwd=$(generate_password)
     install_service "Keycloak" "keycloak" "quay.io/keycloak/keycloak:latest" "8080" \
-        "      KEYCLOAK_ADMIN: admin\n      KEYCLOAK_ADMIN_PASSWORD: ${pwd}\n      KC_PROXY: edge\n      KC_HOSTNAME: keycloak.${DOMAIN}" \
+        "      KEYCLOAK_ADMIN: admin\n      KEYCLOAK_ADMIN_PASSWORD: ${pwd}\n      KC_PROXY: edge\n      KC_HOSTNAME: ${TOOL_DOMAINS[keycloak]}" \
         "" \
         "    command: start"
     echo -e "  ${YELLOW}Senha Keycloak: ${pwd}${NC}"
@@ -1274,25 +1374,25 @@ install_keycloak() {
 
 install_vaultwarden() {
     install_service "VaultWarden" "vault" "vaultwarden/server:latest" "80" \
-        "      DOMAIN: https://vault.${DOMAIN}" \
+        "      DOMAIN: https://${TOOL_DOMAINS[vault]}" \
         "      - vaultwarden_data:/data"
 }
 
 install_passbolt() {
     install_service "Passbolt" "passbolt" "passbolt/passbolt:latest-ce" "443" \
-        "      APP_FULL_BASE_URL: https://passbolt.${DOMAIN}\n      DATASOURCES_DEFAULT_HOST: passbolt-db"
+        "      APP_FULL_BASE_URL: https://${TOOL_DOMAINS[passbolt]}\n      DATASOURCES_DEFAULT_HOST: passbolt-db"
 }
 
 install_botpress() {
     install_service "Botpress" "botpress" "botpress/server:latest" "3000" \
-        "      EXTERNAL_URL: https://botpress.${DOMAIN}"
+        "      EXTERNAL_URL: https://${TOOL_DOMAINS[botpress]}"
 }
 
 install_yourls() {
     local pwd
     pwd=$(generate_password)
     install_service "Yourls" "yourls" "yourls:latest" "80" \
-        "      YOURLS_SITE: https://yourls.${DOMAIN}\n      YOURLS_USER: admin\n      YOURLS_PASS: ${pwd}"
+        "      YOURLS_SITE: https://${TOOL_DOMAINS[yourls]}\n      YOURLS_USER: admin\n      YOURLS_PASS: ${pwd}"
     echo -e "  ${YELLOW}Senha Yourls: ${pwd}${NC}"
 }
 
@@ -1306,7 +1406,7 @@ install_azuracast() {
 
 install_shlink() {
     install_service "Shlink" "shlink" "shlinkio/shlink:latest" "8080" \
-        "      DEFAULT_DOMAIN: shlink.${DOMAIN}\n      IS_HTTPS_ENABLED: true\n      GEOLITE_LICENSE_KEY: ''"
+        "      DEFAULT_DOMAIN: ${TOOL_DOMAINS[shlink]}\n      IS_HTTPS_ENABLED: true\n      GEOLITE_LICENSE_KEY: ''"
 }
 
 install_rustdesk() {
@@ -1337,79 +1437,132 @@ install_wuzapi() {
 
 show_menu() {
     print_banner
-    echo -e "${BOLD}Escolha as ferramentas para instalar:${NC}"
     echo ""
-    echo -e "${CYAN}═══ INFRAESTRUTURA ══════════════════════════════${NC}"
-    echo "  1) Traefik (Proxy Reverso)        2) Portainer (Docker Manager)"
-    echo "  3) MinIO (Storage S3)             4) Ntfy (Notificações)"
-    echo "  5) Gotenberg (PDF API)            6) RabbitMQ (Message Broker)"
-    echo "  7) Browserless (Chrome Headless)"
+    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║          📦 ESCOLHA AS FERRAMENTAS PARA INSTALAR               ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}║  ${CYAN}🔧 INFRAESTRUTURA${NC}${BOLD}                                             ║${NC}"
+    echo -e "${BOLD}║${NC}   1) 🔀 Traefik (Proxy Reverso)                                ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}   2) 🐳 Portainer (Docker Manager)                             ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}   3) 📦 MinIO (Storage S3)                                     ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}   4) 🔔 Ntfy (Notificações)                                    ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}   5) 📄 Gotenberg (PDF API)                                    ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}   6) 📨 RabbitMQ (Message Broker)                              ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}   7) 🌐 Browserless (Chrome Headless)                          ${BOLD}║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  ${CYAN}💬 CHAT & WHATSAPP${NC}${BOLD}                                            ║${NC}"
+    echo -e "${BOLD}║${NC}   8) 💬 Chatwoot (Atendimento)                                 ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}   9) 📱 Evolution API (WhatsApp)                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  10) 📲 WppConnect (WhatsApp)                                  ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  11) 💭 Quepasa API (WhatsApp)                                 ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  12) ✉️  Uno API (Mensagens)                                    ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  13) 📡 Wuzapi (WhatsApp REST)                                 ${BOLD}║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  ${CYAN}⚡ AUTOMAÇÃO${NC}${BOLD}                                                  ║${NC}"
+    echo -e "${BOLD}║${NC}  14) 🔄 N8N (Workflows)                                        ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  15) 🤖 Typebot (Chatbots)                                     ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  16) 📧 Mautic (Marketing)                                     ${BOLD}║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  ${CYAN}🧠 INTELIGÊNCIA ARTIFICIAL${NC}${BOLD}                                    ║${NC}"
+    echo -e "${BOLD}║${NC}  17) 🌊 Flowise (LLM Builder)                                  ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  18) 🤖 Dify AI (IA Platform)                                  ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  19) 🦙 Ollama (LLMs Locais)                                   ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  20) 🔗 LangFlow (LangChain)                                   ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  21) 📊 Langfuse (LLM Obs.)                                    ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  22) 📚 Anything LLM (Chat Docs)                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  23) 🔍 Qdrant (Vector DB)                                     ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  24) 🧬 ZEP (IA Memory)                                        ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  25) 🧪 Evo AI (IA Evolutiva)                                  ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  26) ⚡ Bolt (Dev com IA)                                      ${BOLD}║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  ${CYAN}📋 CRM & PROJETOS${NC}${BOLD}                                             ║${NC}"
+    echo -e "${BOLD}║${NC}  27) 🐕 Woofed CRM                                             ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  28) 🏢 TwentyCRM                                              ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  29) 📈 Krayin CRM                                             ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  30) 📁 OpenProject                                            ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  31) 📌 Planka (Kanban)                                        ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  32) 📋 Focalboard                                             ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  33) 🎫 GLPI (Help Desk)                                       ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  34) 📝 Formbricks (Forms)                                     ${BOLD}║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  ${CYAN}🗄️  DATABASE & ADMIN${NC}${BOLD}                                          ║${NC}"
+    echo -e "${BOLD}║${NC}  35) 🐘 PgAdmin 4                                              ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  36) 🍃 MongoDB                                                ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  37) ⚡ Supabase                                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  38) 🐬 PhpMyAdmin                                             ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  39) 📊 NocoDB                                                 ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  40) 📊 Baserow                                                ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  41) 📊 Nocobase                                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  42) 🏠 ClickHouse                                             ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  43) 🔴 RedisInsight                                           ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  44) 📈 Metabase                                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  ${CYAN}🌐 CMS & SITES${NC}${BOLD}                                                ║${NC}"
+    echo -e "${BOLD}║${NC}  45) 📰 WordPress                                              ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  46) 🎯 Directus                                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  47) 🚀 Strapi                                                 ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  48) ☁️  NextCloud                                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  49) 📖 Wiki.js                                                ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  50) 👥 HumHub                                                 ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  51) 📝 Outline                                                ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  52) 🎓 Moodle                                                 ${BOLD}║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  ${CYAN}📡 MONITORAMENTO${NC}${BOLD}                                              ║${NC}"
+    echo -e "${BOLD}║${NC}  53) ⬆️  Uptime Kuma                                            ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  54) 📊 Grafana                                                ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  55) 🔥 Prometheus                                             ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  56) 📦 cAdvisor                                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  57) 📍 Traccar (GPS)                                          ${BOLD}║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  ${CYAN}🛠️  PRODUTIVIDADE${NC}${BOLD}                                              ║${NC}"
+    echo -e "${BOLD}║${NC}  58) 📅 Cal.com (Agenda)                                       ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  59) 🏗️  Appsmith                                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  60) 🔧 LowCoder                                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  61) 🔨 ToolJet                                                ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  62) ✏️  Excalidraw                                              ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  63) 📄 Docuseal                                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  64) 📄 Documeso                                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  65) 📑 Stirling PDF                                           ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  66) 📅 Easy!Appointments                                      ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  67) 🧠 WiseMapping                                            ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  68) ✨ Affine                                                 ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  69) 💬 Mattermost                                             ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  70) 🏭 Odoo                                                   ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  71) 🔧 Frappe                                                 ${BOLD}║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  ${CYAN}🔒 SEGURANÇA${NC}${BOLD}                                                  ║${NC}"
+    echo -e "${BOLD}║${NC}  72) 🔑 Keycloak (IAM)                                         ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  73) 🔐 VaultWarden (Senhas)                                   ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  74) 🗝️  Passbolt (Senhas Equipe)                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║  ${CYAN}📦 OUTROS${NC}${BOLD}                                                     ║${NC}"
+    echo -e "${BOLD}║${NC}  75) 🤖 Botpress (Chatbot)                                     ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  76) 🔗 Yourls (URL Shortener)                                 ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  77) 🕷️  Firecrawl (Scraping)                                   ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  78) 📻 AzuraCast (Rádio)                                      ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  79) 🔗 Shlink (URLs + Analytics)                              ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  80) 🖥️  RustDesk (Acesso Remoto)                               ${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}  81) 🧪 Hoppscotch (API Client)                                ${BOLD}║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}║   ${GREEN}0) ✅ INSTALAR TUDO${NC}              ${RED}99) ❌ Sair${NC}${BOLD}                ║${NC}"
+    echo -e "${BOLD}║                                                                ║${NC}"
+    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${CYAN}═══ CHAT & WHATSAPP ═════════════════════════════${NC}"
-    echo "  8) Chatwoot (Atendimento)         9) Evolution API (WhatsApp)"
-    echo " 10) WppConnect (WhatsApp)         11) Quepasa API (WhatsApp)"
-    echo " 12) Uno API (Mensagens)           13) Wuzapi (WhatsApp REST)"
-    echo ""
-    echo -e "${CYAN}═══ AUTOMAÇÃO ═══════════════════════════════════${NC}"
-    echo " 14) N8N (Workflows)               15) Typebot (Chatbots)"
-    echo " 16) Mautic (Marketing)"
-    echo ""
-    echo -e "${CYAN}═══ INTELIGÊNCIA ARTIFICIAL ═════════════════════${NC}"
-    echo " 17) Flowise (LLM Builder)         18) Dify AI (IA Platform)"
-    echo " 19) Ollama (LLMs Locais)          20) LangFlow (LangChain)"
-    echo " 21) Langfuse (LLM Obs.)           22) Anything LLM (Chat Docs)"
-    echo " 23) Qdrant (Vector DB)            24) ZEP (IA Memory)"
-    echo " 25) Evo AI (IA Evolutiva)         26) Bolt (Dev com IA)"
-    echo ""
-    echo -e "${CYAN}═══ CRM & PROJETOS ══════════════════════════════${NC}"
-    echo " 27) Woofed CRM                    28) TwentyCRM"
-    echo " 29) Krayin CRM                    30) OpenProject"
-    echo " 31) Planka (Kanban)               32) Focalboard"
-    echo " 33) GLPI (Help Desk)              34) Formbricks (Forms)"
-    echo ""
-    echo -e "${CYAN}═══ DATABASE & ADMIN ════════════════════════════${NC}"
-    echo " 35) PgAdmin 4                     36) MongoDB"
-    echo " 37) Supabase                      38) PhpMyAdmin"
-    echo " 39) NocoDB                        40) Baserow"
-    echo " 41) Nocobase                      42) ClickHouse"
-    echo " 43) RedisInsight                  44) Metabase"
-    echo ""
-    echo -e "${CYAN}═══ CMS & SITES ═════════════════════════════════${NC}"
-    echo " 45) WordPress                     46) Directus"
-    echo " 47) Strapi                        48) NextCloud"
-    echo " 49) Wiki.js                       50) HumHub"
-    echo " 51) Outline                       52) Moodle"
-    echo ""
-    echo -e "${CYAN}═══ MONITORAMENTO ═══════════════════════════════${NC}"
-    echo " 53) Uptime Kuma                   54) Grafana"
-    echo " 55) Prometheus                    56) cAdvisor"
-    echo " 57) Traccar (GPS)"
-    echo ""
-    echo -e "${CYAN}═══ PRODUTIVIDADE ═══════════════════════════════${NC}"
-    echo " 58) Cal.com (Agenda)              59) Appsmith"
-    echo " 60) LowCoder                      61) ToolJet"
-    echo " 62) Excalidraw                    63) Docuseal"
-    echo " 64) Documeso                      65) Stirling PDF"
-    echo " 66) Easy!Appointments             67) WiseMapping"
-    echo " 68) Affine                        69) Mattermost"
-    echo " 70) Odoo                          71) Frappe"
-    echo ""
-    echo -e "${CYAN}═══ SEGURANÇA ═══════════════════════════════════${NC}"
-    echo " 72) Keycloak (IAM)                73) VaultWarden (Senhas)"
-    echo " 74) Passbolt (Senhas Equipe)"
-    echo ""
-    echo -e "${CYAN}═══ OUTROS ══════════════════════════════════════${NC}"
-    echo " 75) Botpress (Chatbot)            76) Yourls (URL Shortener)"
-    echo " 77) Firecrawl (Scraping)          78) AzuraCast (Rádio)"
-    echo " 79) Shlink (URLs + Analytics)     80) RustDesk (Acesso Remoto)"
-    echo " 81) Hoppscotch (API Client)"
-    echo ""
-    echo "─────────────────────────────────────────────────────"
-    echo -e " ${GREEN}0) INSTALAR TUDO${NC}    ${RED}99) Sair${NC}"
-    echo "─────────────────────────────────────────────────────"
-    echo ""
-    echo -e "Digite os números separados por espaço (ex: ${CYAN}1 8 9 14 15${NC})"
-    read -rp "> " choices
+    echo -e "  Digite os números separados por espaço (ex: ${CYAN}1 8 9 14 15${NC})"
+    read -rp "  > " choices
 }
 
 # ======================== MAPEAMENTO DE INSTALAÇÃO ========================
@@ -1909,17 +2062,8 @@ main() {
                 install_docker
                 install_docker_compose
                 
-                if [[ -z "$DOMAIN" ]]; then
+                if [[ -z "$EMAIL" ]]; then
                     setup_initial
-                fi
-                
-                if [[ "$TRAEFIK_INSTALLED" == false ]] && [[ ! -d "$DOCKER_COMPOSE_DIR/traefik" ]]; then
-                    echo ""
-                    echo -e "${YELLOW}Traefik (proxy reverso) é necessário para as demais ferramentas.${NC}"
-                    read -rp "$(echo -e ${CYAN}'Instalar Traefik agora? [S/n]: '${NC})" install_traefik_choice
-                    if [[ "${install_traefik_choice,,}" != "n" ]]; then
-                        install_traefik
-                    fi
                 fi
                 
                 show_menu
@@ -1932,11 +2076,27 @@ main() {
                     choices=$(seq 1 81 | tr '\n' ' ')
                 fi
                 
+                # Perguntar subdomínio individual de cada ferramenta
+                if ! ask_subdomains "$choices"; then
+                    continue
+                fi
+                
+                # Instalar Traefik primeiro se selecionado ou necessário
+                if [[ "$TRAEFIK_INSTALLED" == false ]] && [[ ! -d "$DOCKER_COMPOSE_DIR/traefik" ]]; then
+                    echo ""
+                    echo -e "${YELLOW}Traefik (proxy reverso) é necessário para as demais ferramentas.${NC}"
+                    read -rp "$(echo -e ${CYAN}'Instalar Traefik agora? [S/n]: '${NC})" install_traefik_choice
+                    if [[ "${install_traefik_choice,,}" != "n" ]]; then
+                        install_traefik
+                    fi
+                fi
+                
                 echo ""
                 log_info "Iniciando instalação das ferramentas selecionadas..."
                 echo ""
                 
                 for choice in $choices; do
+                    [[ "$choice" == "1" ]] && continue  # Traefik já tratado acima
                     run_install "$choice"
                     echo ""
                 done
