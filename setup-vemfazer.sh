@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 ################################################################################
@@ -3344,17 +3345,30 @@ show_manage_menu() {
     echo ""
     echo -e "${BOLD}Gerenciamento:${NC}"
     echo ""
-    echo "  Digite o número da ferramenta seguido da ação:"
-    echo -e "  ${CYAN}start <num>${NC}   — Iniciar"
-    echo -e "  ${CYAN}stop <num>${NC}    — Parar"
-    echo -e "  ${CYAN}restart <num>${NC} — Reiniciar"
-    echo -e "  ${CYAN}logs <num>${NC}    — Ver logs"
-    echo -e "  ${CYAN}update <num>${NC}  — Atualizar imagem"
-    echo -e "  ${GREEN}99${NC}            — Voltar"
+    echo "  Use o numero da ferramenta listada acima com a acao:"
+    echo ""
+    echo -e "  ${CYAN}start <num>${NC}     -- Iniciar"
+    echo -e "  ${CYAN}stop <num>${NC}      -- Parar"
+    echo -e "  ${CYAN}restart <num>${NC}   -- Reiniciar"
+    echo -e "  ${CYAN}logs <num>${NC}      -- Ver logs"
+    echo -e "  ${CYAN}update <num>${NC}    -- Atualizar imagem"
+    echo -e "  ${CYAN}status <num>${NC}    -- Ver estado dos containers"
+    echo -e "  ${RED}uninstall <num>${NC} -- Desinstalar"
+    echo -e "  ${RED}0${NC}               -- Desinstalar tudo"
+    echo -e "  ${GREEN}99${NC}              -- Voltar"
     echo ""
     read -rp "> " action target_num
     
     if [[ "$action" == "99" ]]; then
+        return
+    fi
+    
+    if [[ "$action" == "0" ]]; then
+        read -rp "DESINSTALAR TODAS as ferramentas? (s/N): " conf
+        if [[ "$conf" =~ ^[sS]$ ]]; then
+            uninstall_all
+        fi
+        show_manage_menu
         return
     fi
     
@@ -3363,7 +3377,7 @@ show_manage_menu() {
     local dir="$DOCKER_COMPOSE_DIR/${subdomain}"
     
     if [[ -z "$subdomain" || ! -d "$dir" ]]; then
-        log_warn "Ferramenta não encontrada ou não instalada"
+        log_warn "Ferramenta nao encontrada ou nao instalada"
         read -rp "$(echo -e ${CYAN}'Pressione ENTER...'${NC})" _
         show_manage_menu
         return
@@ -3392,8 +3406,19 @@ show_manage_menu() {
             cd "$dir" && docker compose pull && docker compose up -d 2>> /opt/vemfazer/install.log
             log_success "${name} atualizado!"
             ;;
+        status)
+            log_info "Estado dos containers de ${name}:"
+            echo ""
+            cd "$dir" && docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || docker compose ps
+            ;;
+        uninstall)
+            read -rp "Confirmar desinstalacao de ${name}? (s/N): " conf
+            if [[ "$conf" =~ ^[sS]$ ]]; then
+                uninstall_tool "$target_num"
+            fi
+            ;;
         *)
-            log_warn "Ação inválida: $action"
+            log_warn "Acao invalida: $action"
             ;;
     esac
     
