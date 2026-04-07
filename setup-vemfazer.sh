@@ -43,6 +43,7 @@ TRAEFIK_INSTALLED=false
 ACCEPTED_TERMS=false
 declare -A TOOL_DOMAINS
 CREDENTIALS_FILE="/root/vemfazer-credenciais.txt"
+SERVER_IP=$(curl -4 -s --connect-timeout 5 ifconfig.me || curl -4 -s --connect-timeout 5 icanhazip.com || echo "")
 LAST_INSTALL_DIR=""
 MINIO_GENERATED_PWD=""
 LAST_INSTALL_DOMAIN=""
@@ -485,6 +486,50 @@ ask_subdomains() {
     return 0
 }
 
+check_dns() {
+    if [[ -z "$SERVER_IP" ]]; then
+        echo -e "${YELLOW}Nao foi possivel detectar o IP do servidor. Pulando verificacao de DNS.${NC}"
+        return 0
+    fi
+
+    echo ""
+    echo -e "${CYAN}${BOLD}VERIFICANDO DNS${NC}"
+    echo "  IP do servidor: $SERVER_IP"
+    echo ""
+
+    local errors=0
+    for key in "${!TOOL_DOMAINS[@]}"; do
+        local domain="${TOOL_DOMAINS[$key]}"
+        local resolved=""
+        resolved=$(dig +short "$domain" A 2>/dev/null | tail -1)
+        if [[ -z "$resolved" ]]; then
+            resolved=$(getent hosts "$domain" 2>/dev/null | awk '{print $1}')
+        fi
+        if [[ -z "$resolved" ]]; then
+            resolved=$(host "$domain" 2>/dev/null | awk '/has address/{print $NF}' | tail -1)
+        fi
+
+        if [[ "$resolved" == "$SERVER_IP" ]]; then
+            echo -e "  ${GREEN}✔${NC} $domain -> $resolved"
+        else
+            echo -e "  ${RED}✘${NC} $domain -> ${resolved:-nao encontrado} (esperado: $SERVER_IP)"
+            ((errors++))
+        fi
+    done
+    echo ""
+
+    if [[ $errors -gt 0 ]]; then
+        echo -e "${YELLOW}$errors subdominio(s) nao apontam para este servidor.${NC}"
+        echo "  Os certificados SSL NAO serao gerados para esses dominios."
+        echo ""
+        read -rp "Continuar mesmo assim? (s/N): " resp
+        [[ "$resp" =~ ^[sS]$ ]] || return 1
+    else
+        echo -e "${GREEN}Todos os subdominios apontam corretamente para este servidor.${NC}"
+    fi
+    return 0
+}
+
 # ======================== GERAÇÃO DE SENHAS ========================
 
 generate_password() {
@@ -618,6 +663,7 @@ install_traefik() {
     local traefik_domain="${TOOL_DOMAINS[traefik]:-}"
     local dir="$DOCKER_COMPOSE_DIR/traefik"
     mkdir -p "$dir" "$dir/letsencrypt"
+    rm -f "$dir/letsencrypt/acme.json"
     touch "$dir/letsencrypt/acme.json"
     chmod 600 "$dir/letsencrypt/acme.json"
     
@@ -3423,6 +3469,10 @@ main() {
                 
                 # Perguntar subdomínio individual de cada ferramenta
                 if ! ask_subdomains "$choices"; then
+                    continue
+                fi
+
+                if ! check_dns; then
                     continue
                 fi
                 
