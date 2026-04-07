@@ -49,101 +49,26 @@ LAST_INSTALL_DOMAIN=""
 
 # ======================== FUNÇÕES UTILITÁRIAS ========================
 
-print_ascii_verificando() {
-    echo -e "${CYAN}"
-    echo "==================================================================================================="
-    echo "=                                                                                                 ="
-    echo "=        ██╗   ██╗███████╗██████╗ ██╗███████╗██╗ ██████╗ █████╗ ███╗   ██╗██████╗  ██████╗       ="
-    echo "=        ██║   ██║██╔════╝██╔══██╗██║██╔════╝██║██╔════╝██╔══██╗████╗  ██║██╔══██╗██╔═══██╗      ="
-    echo "=        ██║   ██║█████╗  ██████╔╝██║█████╗  ██║██║     ███████║██╔██╗ ██║██║  ██║██║   ██║      ="
-    echo "=        ╚██╗ ██╔╝██╔══╝  ██╔══██╗██║██╔══╝  ██║██║     ██╔══██║██║╚██╗██║██║  ██║██║   ██║      ="
-    echo "=         ╚████╔╝ ███████╗██║  ██║██║██║     ██║╚██████╗██║  ██║██║ ╚████║██████╔╝╚██████╔╝      ="
-    echo "=          ╚═══╝  ╚══════╝╚═╝  ╚═╝╚═╝╚═╝     ╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝  ╚═════╝   ="
-    echo "=                                                                                                 ="
-    echo "==================================================================================================="
-    echo -e "${NC}"
-}
-
-print_ascii_aviso() {
-    echo -e "${YELLOW}"
-    echo "==================================================================================================="
-    echo "=                                                                                                 ="
-    echo "=                       █████╗     ██╗   ██╗    ██╗    ███████╗     ██████╗                        ="
-    echo "=                      ██╔══██╗    ██║   ██║    ██║    ██╔════╝    ██╔═══██╗                       ="
-    echo "=                      ███████║    ██║   ██║    ██║    ███████╗    ██║   ██║                       ="
-    echo "=                      ██╔══██║    ╚██╗ ██╔╝    ██║    ╚════██║    ██║   ██║                       ="
-    echo "=                      ██║  ██║     ╚████╔╝     ██║    ███████║    ╚██████╔╝                       ="
-    echo "=                      ╚═╝  ╚═╝      ╚═══╝      ╚═╝    ╚══════╝     ╚═════╝                      ="
-    echo "=                                                                                                 ="
-    echo "==================================================================================================="
-    echo -e "${NC}"
-}
-
-print_ascii_iniciando() {
-    echo -e "${GREEN}"
-    echo "==================================================================================================="
-    echo "=                                                                                                 ="
-    echo "=                   ██╗███╗   ██╗██╗ ██████╗██╗ █████╗ ███╗   ██╗██████╗  ██████╗                 ="
-    echo "=                   ██║████╗  ██║██║██╔════╝██║██╔══██╗████╗  ██║██╔══██╗██╔═══██╗                ="
-    echo "=                   ██║██╔██╗ ██║██║██║     ██║███████║██╔██╗ ██║██║  ██║██║   ██║                ="
-    echo "=                   ██║██║╚██╗██║██║██║     ██║██╔══██║██║╚██╗██║██║  ██║██║   ██║                ="
-    echo "=                   ██║██║ ╚████║██║╚██████╗██║██║  ██║██║ ╚████║██████╔╝╚██████╔╝                ="
-    echo "=                   ╚═╝╚═╝  ╚═══╝╚═╝ ╚═════╝╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝  ╚═════╝             ="
-    echo "=                                              v. ${VERSION}                                      ="
-    echo "=                                                                                                 ="
-    echo "==================================================================================================="
-    echo -e "${NC}"
-}
-
-print_ascii_setup() {
-    echo -e "${BLUE}"
-    echo "       ███████╗███████╗████████╗██╗   ██╗██████╗     ██╗   ██╗███████╗███╗   ███╗"
-    echo "       ██╔════╝██╔════╝╚══██╔══╝██║   ██║██╔══██╗    ██║   ██║██╔════╝████╗ ████║"
-    echo "       ███████╗█████╗     ██║   ██║   ██║██████╔╝    ██║   ██║█████╗  ██╔████╔██║"
-    echo "       ╚════██║██╔══╝     ██║   ██║   ██║██╔═══╝     ╚██╗ ██╔╝██╔══╝  ██║╚██╔╝██║"
-    echo "       ███████║███████╗   ██║   ╚██████╔╝██║          ╚████╔╝ ███████╗██║ ╚═╝ ██║"
-    echo "       ╚══════╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝           ╚═══╝  ╚══════╝╚═╝     ╚═╝"
-    echo ""
-    echo "       ███████╗ █████╗ ███████╗███████╗██████╗"
-    echo "       ██╔════╝██╔══██╗╚══███╔╝██╔════╝██╔══██╗"
-    echo "       █████╗  ███████║  ███╔╝ █████╗  ██████╔╝"
-    echo "       ██╔══╝  ██╔══██║ ███╔╝  ██╔══╝  ██╔══██╗"
-    echo "       ██║     ██║  ██║███████╗███████╗██║  ██║"
-    echo "       ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝"
-    echo -e "${NC}"
-}
-
 print_banner() {
     clear
-    print_ascii_setup
+    echo -e "${BLUE}SETUP VEM FAZER v${VERSION}${NC}"
     echo ""
-    echo -e "${YELLOW}==================================================================================================${NC}"
-    echo -e "${YELLOW}=                                                                                                =${NC}"
-    echo -e "${YELLOW}=   ${WHITE}Este auto instalador foi desenvolvido para auxiliar na instalação das principais aplicações${YELLOW}  =${NC}"
-    echo -e "${YELLOW}=    ${WHITE}disponíveis no mercado open source. Já deixo todos os créditos aos desenvolvedores de cada${YELLOW}  =${NC}"
-    echo -e "${YELLOW}=   ${WHITE}aplicação disponíveis aqui. Este Setup é licenciado sob a Licença MIT (MIT). Você pode usar,${YELLOW} =${NC}"
-    echo -e "${YELLOW}=    ${WHITE}copiar, modificar, integrar, publicar, distribuir e/ou vender cópias dos produtos finais,${YELLOW}  =${NC}"
-    echo -e "${YELLOW}=   ${WHITE}mas deve sempre declarar que Canal Vem Fazer (contato@vemfazer.com) é o autor original${YELLOW}      =${NC}"
-    echo -e "${YELLOW}=   ${WHITE}destes códigos e atribuir um link para https://canalvemfazer.com.br${YELLOW}                            =${NC}"
-    echo -e "${YELLOW}=                                                                                                =${NC}"
-    echo -e "${YELLOW}=   ${CYAN}📺 YouTube: https://www.youtube.com/@VemFazer${YELLOW}                                              =${NC}"
-    echo -e "${YELLOW}=   ${CYAN}💬 WhatsApp: https://chat.whatsapp.com/I6LVQeb13Cp7l39fA2cY0l${YELLOW}                              =${NC}"
-    echo -e "${YELLOW}=   ${CYAN}🌐 Site: https://canalvemfazer.com.br${YELLOW}                                                         =${NC}"
-    echo -e "${YELLOW}=                                                                                                =${NC}"
-    echo -e "${YELLOW}==================================================================================================${NC}"
+    echo -e "${WHITE}Auto instalador de aplicações open source${NC}"
+    echo -e "${WHITE}Desenvolvido por Canal Vem Fazer (contato@vemfazer.com)${NC}"
+    echo -e "${WHITE}Licenciado sob a Licença MIT${NC}"
+    echo ""
+    echo -e "${CYAN}📺 YouTube: https://www.youtube.com/@VemFazer${NC}"
+    echo -e "${CYAN}💬 WhatsApp: https://chat.whatsapp.com/I6LVQeb13Cp7l39fA2cY0l${NC}"
+    echo -e "${CYAN}🌐 Site: https://canalvemfazer.com.br${NC}"
     echo ""
 }
 
 pre_install_checks() {
     clear
-    print_ascii_verificando
-    echo ""
+    echo -e "${CYAN}VERIFICANDO...${NC}"
     echo -e "${WHITE}Aguarde enquanto verificamos algumas informações.${NC}"
     echo ""
-
-    print_ascii_aviso
-    echo ""
-    echo -e "${WHITE}                            Este script recomenda o uso do Ubuntu 22.04+${NC}"
+    echo -e "${YELLOW}AVISO: Este script recomenda o uso do Ubuntu 22.04+${NC}"
     echo ""
 
     local step=1
@@ -203,8 +128,7 @@ pre_install_checks() {
     step=$((step + 1))
 
     echo ""
-    print_ascii_setup
-    print_ascii_iniciando
+    echo -e "${GREEN}INICIANDO INSTALAÇÃO v${VERSION}${NC}"
     echo ""
 }
 
@@ -564,11 +488,7 @@ ask_subdomains() {
     done
     echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    read -rp "$(echo -e ${YELLOW}'Confirmar e prosseguir com a instalação? [S/n]: '${NC})" confirm_domains
-    if [[ "${confirm_domains,,}" == "n" ]]; then
-        log_info "Instalação cancelada."
-        return 1
-    fi
+    echo ""
     return 0
 }
 
@@ -2907,12 +2827,9 @@ show_menu_page() {
     fi
     nav="${nav}${GREEN}[0] Instalar tudo${NC}   ${RED}[99] Sair${NC}"
     echo -e "$nav"
-    echo -e "  ${CYAN}[C] Confirmar selecionados${NC}"
     echo ""
-    echo -e "  ${WHITE}Digite número + ENTER para marcar/desmarcar${NC}"
-    if [[ -n "$SELECTED_TOOLS" ]]; then
-        echo -e "  ${GREEN}ENTER sem número = confirmar e instalar${NC}"
-    fi
+    echo -e "  ${WHITE}Digite o número da ferramenta + ENTER para instalar${NC}"
+    echo -e "  ${WHITE}Vários números separados por espaço: ${CYAN}14 15 17${NC}"
     echo ""
 }
 
@@ -2930,15 +2847,10 @@ show_menu() {
         input=$(echo "$input" | tr ',' ' ' | tr -s ' ' | xargs)
         input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
         
-        # ENTER vazio
+        # ENTER vazio — pedir para digitar um número
         if [[ -z "$input" ]]; then
-            if [[ -n "$SELECTED_TOOLS" ]]; then
-                choices="$SELECTED_TOOLS"
-                return
-            else
-                MENU_STATUS="${YELLOW}⚠ Digite um número para selecionar uma ferramenta${NC}"
-                continue
-            fi
+            MENU_STATUS="${YELLOW}⚠ Digite o número da ferramenta que deseja instalar${NC}"
+            continue
         fi
         
         case "$input" in
@@ -2964,24 +2876,27 @@ show_menu() {
                 choices="0"
                 return
                 ;;
-            C)
-                if [[ -n "$SELECTED_TOOLS" ]]; then
-                    choices="$SELECTED_TOOLS"
-                    return
-                else
-                    MENU_STATUS="${RED}✘ Nenhuma ferramenta selecionada!${NC}"
-                fi
-                ;;
             *)
-                local found_valid=false
+                # Validate all numbers first
+                local valid_nums=""
+                local has_invalid=false
                 for num in $input; do
                     if [[ "$num" =~ ^[0-9]+$ ]] && (( num >= 1 && num <= 81 )); then
-                        toggle_tool "$num"
-                        found_valid=true
+                        valid_nums="$valid_nums $num"
                     else
                         MENU_STATUS="${RED}✘ Opção inválida: ${num}${NC}"
+                        has_invalid=true
                     fi
                 done
+                valid_nums=$(echo "$valid_nums" | xargs)
+                # If we have valid numbers and no invalid ones, proceed immediately
+                if [[ -n "$valid_nums" && "$has_invalid" == false ]]; then
+                    choices="$valid_nums"
+                    return
+                elif [[ -n "$valid_nums" ]]; then
+                    # Had some invalid, show error but don't proceed
+                    MENU_STATUS="${RED}✘ Corrija as opções inválidas e tente novamente${NC}"
+                fi
                 ;;
         esac
     done
