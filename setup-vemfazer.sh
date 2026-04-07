@@ -379,7 +379,7 @@ resolve_dependencies() {
                     local dep_name="${TOOL_NAME_MAP[$dep]:-Ferramenta $dep}"
                     local tool_name="${TOOL_NAME_MAP[$num]:-Ferramenta $num}"
                     local reason="${TOOL_DEP_REASON[$dep]:-dependência necessária}"
-                    echo -e "  ${YELLOW}⚠️  ${tool_name} requer ${dep_name} (${reason}). Adicionando automaticamente.${NC}"
+                    echo -e "  ${YELLOW}⚠️  ${tool_name} requer ${dep_name} (${reason}). Adicionando automaticamente.${NC}" >&2
                     resolved="$dep $resolved"
                     added_any=true
                 fi
@@ -388,8 +388,8 @@ resolve_dependencies() {
     done
     
     if [[ "$added_any" == true ]]; then
-        echo ""
-        read -rp "$(echo -e ${CYAN}'Pressione ENTER para continuar...'${NC})" _
+        echo "" >&2
+        read -rp "$(echo -e ${CYAN}'Pressione ENTER para continuar...'${NC})" _ </dev/tty
     fi
     
     # Remover duplicatas e ordenar
@@ -431,12 +431,8 @@ ask_subdomains() {
     local selected_tools="$1"
     
     echo ""
-    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BOLD}║  📋 Configuração de Subdomínios                                ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  Digite o domínio completo para cada ferramenta selecionada.    ║${NC}"
-    echo -e "${BOLD}║  Ex: n8n.meudominio.com                                        ║${NC}"
-    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}${BOLD}CONFIGURAÇÃO DE SUBDOMÍNIOS${NC}"
+    echo "  Digite o domínio completo para cada ferramenta. Ex: n8n.meudominio.com"
     echo ""
     
     for num in $selected_tools; do
@@ -480,13 +476,10 @@ ask_subdomains() {
     done
     
     # Resumo
-    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BOLD}║  ✅ Resumo dos Subdomínios Configurados                        ║${NC}"
-    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${GREEN}${BOLD}RESUMO DOS SUBDOMÍNIOS${NC}"
     for key in "${!TOOL_DOMAINS[@]}"; do
-        printf "${BOLD}║${NC}  %-18s → ${GREEN}%s${NC}\n" "$key" "${TOOL_DOMAINS[$key]}"
+        printf "  %-18s → ${GREEN}%s${NC}\n" "$key" "${TOOL_DOMAINS[$key]}"
     done
-    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo ""
     return 0
@@ -529,8 +522,8 @@ check_service_status() {
             exited|dead) icon="${RED}❌ exited${NC}" ;;
             *) icon="${YELLOW}⚠️  ${state}${NC}" ;;
         esac
-        echo -e "  ║     %-25s %b" "$name" "$icon"
-        printf "  ║     %-25s %b\n" "$name" "$icon"
+        echo -e "     %-25s %b" "$name" "$icon"
+        printf "     %-25s %b\n" "$name" "$icon"
     done <<< "$ps_output"
 }
 
@@ -542,35 +535,30 @@ show_install_result() {
     local extra_info="$5"
     local compose_dir="$6"
     
-    local width=64
-    local line
-    line=$(printf '═%.0s' $(seq 1 $width))
-    
     echo ""
-    echo -e "${GREEN}╔${line}╗${NC}"
-    printf "${GREEN}║${NC}  ✅ %-$(($width - 5))s${GREEN}║${NC}\n" "${name} — Instalação concluída"
-    echo -e "${GREEN}╠${line}╣${NC}"
+    echo -e "${GREEN}${BOLD}✅ ${name} — Instalação concluída${NC}"
+    echo ""
     
     if [[ -n "$url" ]]; then
-        printf "${GREEN}║${NC}  🌐 URL:      %-$(($width - 16))s${GREEN}║${NC}\n" "$url"
+        echo -e "  🌐 URL:      ${GREEN}${url}${NC}"
     fi
     
     if [[ -n "$user" ]]; then
-        printf "${GREEN}║${NC}  👤 Usuário:  %-$(($width - 16))s${GREEN}║${NC}\n" "$user"
+        echo -e "  👤 Usuário:  ${user}"
     fi
     
     if [[ -n "$password" ]]; then
-        printf "${GREEN}║${NC}  🔑 Senha:    %-$(($width - 16))s${GREEN}║${NC}\n" "$password"
+        echo -e "  🔑 Senha:    ${password}"
     fi
     
     if [[ -n "$extra_info" ]]; then
-        echo -e "${GREEN}║${NC}  ${extra_info}"
+        echo -e "  ${extra_info}"
     fi
     
     # Status dos containers com retry
     if [[ -n "$compose_dir" ]] && [[ -f "$compose_dir/docker-compose.yml" ]]; then
-        printf "${GREEN}║${NC}  %-$(($width - 3))s${GREEN}║${NC}\n" ""
-        printf "${GREEN}║${NC}  📦 %-$(($width - 6))s${GREEN}║${NC}\n" "Containers:"
+        echo ""
+        echo -e "  📦 Containers:"
         
         sleep 5
         
@@ -586,9 +574,8 @@ show_install_result() {
                 fi
             done <<< "$ps_output"
             
-            # Se algum container está restarting, aguardar mais e re-checar
             if [[ "$has_restarting" == true ]]; then
-                printf "${GREEN}║${NC}     %-$(($width - 6))s${GREEN}║${NC}\n" "⏳ Aguardando containers estabilizarem..."
+                echo "     ⏳ Aguardando containers estabilizarem..."
                 sleep 10
                 ps_output=$(cd "$compose_dir" && docker compose ps --format "{{.Name}}|{{.State}}" 2>/dev/null || true)
             fi
@@ -602,12 +589,12 @@ show_install_result() {
                     exited|dead) icon="❌ exited" ;;
                     *) icon="⚠️  ${cstate}" ;;
                 esac
-                printf "${GREEN}║${NC}     %-20s %-$(($width - 26))s${GREEN}║${NC}\n" "$cname" "$icon"
+                printf "     %-20s %s\n" "$cname" "$icon"
             done <<< "$ps_output"
         fi
     fi
     
-    echo -e "${GREEN}╚${line}╝${NC}"
+    echo ""
     echo ""
     
     # Salvar credenciais em arquivo
@@ -936,7 +923,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
-    show_install_result "Chatwoot" "https://${CHATWOOT_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${secret}\n${GREEN}║${NC}  ✔ Sidekiq (worker) incluído" "$dir"
+    show_install_result "Chatwoot" "https://${CHATWOOT_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${secret}\n  ✔ Sidekiq (worker) incluído" "$dir"
 }
 
 install_evolution_api() {
@@ -1042,7 +1029,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
-    show_install_result "Typebot" "https://${TYPEBOT_BUILDER_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${secret}\n${GREEN}║${NC}  🌐 Viewer: https://${TYPEBOT_VIEWER_DOMAIN}" "$dir"
+    show_install_result "Typebot" "https://${TYPEBOT_BUILDER_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${secret}\n  🌐 Viewer: https://${TYPEBOT_VIEWER_DOMAIN}" "$dir"
 }
 
 install_mautic() {
@@ -1378,7 +1365,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
-    show_install_result "GLPI" "https://${GLPI_DOMAIN}" "glpi" "glpi (alterar no primeiro acesso)" "🔑 Senha DB: ${pwd}\n${GREEN}║${NC}  ℹ️  Outros logins padrão: tech/tech, normal/normal, post-only/postonly" "$dir"
+    show_install_result "GLPI" "https://${GLPI_DOMAIN}" "glpi" "glpi (alterar no primeiro acesso)" "🔑 Senha DB: ${pwd}\n  ℹ️  Outros logins padrão: tech/tech, normal/normal, post-only/postonly" "$dir"
 }
 
 install_formbricks() {
@@ -2416,7 +2403,7 @@ networks:
 EOF
 
     cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
-    show_install_result "Passbolt" "https://${PASSBOLT_DOMAIN}" "(criar via CLI)" "" "🔑 Senha DB: ${pwd}\n${GREEN}║${NC}  ℹ️  Criar admin: docker exec passbolt su -m -c \"bin/cake passbolt register_user -u EMAIL -f NOME -l SOBRENOME -r admin\" -s /bin/sh www-data" "$dir"
+    show_install_result "Passbolt" "https://${PASSBOLT_DOMAIN}" "(criar via CLI)" "" "🔑 Senha DB: ${pwd}\n  ℹ️  Criar admin: docker exec passbolt su -m -c \"bin/cake passbolt register_user -u EMAIL -f NOME -l SOBRENOME -r admin\" -s /bin/sh www-data" "$dir"
 }
 
 install_botpress() {
@@ -2542,7 +2529,7 @@ EOF
     cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     local server_ip
     server_ip=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
-    show_install_result "RustDesk" "" "" "" "ℹ️  Servidor relay — sem interface web\n${GREEN}║${NC}  🌐 IP do servidor: ${server_ip}\n${GREEN}║${NC}  📡 Portas: 21115-21119 (TCP+UDP)\n${GREEN}║${NC}  ⚙️  Configure no cliente: ID Server = ${server_ip}" "$dir"
+    show_install_result "RustDesk" "" "" "" "ℹ️  Servidor relay — sem interface web\n  🌐 IP do servidor: ${server_ip}\n  📡 Portas: 21115-21119 (TCP+UDP)\n  ⚙️  Configure no cliente: ID Server = ${server_ip}" "$dir"
 }
 
 install_hoppscotch() {
@@ -3438,9 +3425,8 @@ main() {
                 
                 # Resumo pré-instalação com dependências
                 echo ""
-                echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
-                echo -e "${BOLD}║  📋 RESUMO PRÉ-INSTALAÇÃO                                     ║${NC}"
-                echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+                echo -e "${CYAN}${BOLD}RESUMO PRÉ-INSTALAÇÃO${NC}"
+                echo ""
                 for c in $choices; do
                     local t_name="${TOOL_NAME_MAP[$c]:-Ferramenta $c}"
                     local t_sub="${TOOL_DEFAULT_SUBDOMAIN[$c]:-}"
@@ -3453,11 +3439,10 @@ main() {
                         done
                         dep_text=" (dep: ${dep_text%, })"
                     fi
-                    printf "${BOLD}║${NC}  %-3s %-22s → %-20s${YELLOW}%s${NC}\n" "$c" "$t_name" "$t_domain" "$dep_text"
+                    printf "  %-3s %-22s → %-20s${YELLOW}%s${NC}\n" "$c" "$t_name" "$t_domain" "$dep_text"
                 done
-                echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-                printf "${BOLD}║${NC}  Total: ${CYAN}%d${NC} ferramenta(s)\n" $(echo $choices | wc -w)
-                echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
+                echo ""
+                printf "  Total: ${CYAN}%d${NC} ferramenta(s)\n" $(echo $choices | wc -w)
                 echo ""
                 read -rp "$(echo -e ${YELLOW}'Confirmar instalação? [S/n]: '${NC})" confirm_install
                 if [[ "${confirm_install,,}" == "n" ]]; then
@@ -3509,23 +3494,16 @@ main() {
                 set -uo pipefail
                 
                 echo ""
-                echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
-                echo -e "${GREEN}║                                                            ║${NC}"
-                echo -e "${GREEN}║   ✅ INSTALAÇÃO CONCLUÍDA COM SUCESSO!                     ║${NC}"
-                echo -e "${GREEN}║                                                            ║${NC}"
-                echo -e "${GREEN}║   📺 Canal: youtube.com/@VemFazer                          ║${NC}"
-                echo -e "${GREEN}║   🚀 Setup Vem Fazer - Raphael Batista                     ║${NC}"
-                echo -e "${GREEN}║                                                            ║${NC}"
-                echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
+                echo -e "${GREEN}${BOLD}✅ INSTALAÇÃO CONCLUÍDA COM SUCESSO!${NC}"
+                echo ""
+                echo -e "  📺 Canal: youtube.com/@VemFazer"
+                echo -e "  🚀 Setup Vem Fazer - Raphael Batista"
                 echo ""
                 
                 # Exibir resumo final com credenciais salvas
                 if [[ -f "$CREDENTIALS_FILE" ]]; then
-                    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
-                    echo -e "${BOLD}║  📋 RESUMO GERAL — TODAS AS CREDENCIAIS                       ║${NC}"
-                    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-                    echo -e "${BOLD}║  📁 Salvas em: ${CYAN}/root/vemfazer-credenciais.txt${NC}${BOLD}                 ║${NC}"
-                    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
+                    echo -e "${CYAN}${BOLD}RESUMO GERAL — TODAS AS CREDENCIAIS${NC}"
+                    echo -e "  📁 Salvas em: ${CYAN}/root/vemfazer-credenciais.txt${NC}"
                     echo ""
                     cat "$CREDENTIALS_FILE"
                     echo ""
@@ -3554,11 +3532,8 @@ main() {
             6)
                 echo ""
                 if [[ -f "$CREDENTIALS_FILE" ]]; then
-                    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
-                    echo -e "${BOLD}║  🔑 CREDENCIAIS SALVAS                                        ║${NC}"
-                    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
-                    echo -e "${BOLD}║  📁 Arquivo: ${CYAN}/root/vemfazer-credenciais.txt${NC}${BOLD}                    ║${NC}"
-                    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
+                    echo -e "${CYAN}${BOLD}CREDENCIAIS SALVAS${NC}"
+                    echo -e "  📁 Arquivo: ${CYAN}/root/vemfazer-credenciais.txt${NC}"
                     echo ""
                     cat "$CREDENTIALS_FILE"
                 else
