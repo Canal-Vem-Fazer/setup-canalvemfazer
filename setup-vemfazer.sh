@@ -2653,33 +2653,64 @@ install_wuzapi() {
 # ======================== MENU PRINCIPAL ========================
 
 SELECTED_TOOLS=""
+BOX_INNER=70
+
+strip_ansi() {
+    local text="$1"
+    echo -e "$text" | sed 's/\x1b\[[0-9;]*m//g'
+}
+
+visible_len() {
+    local stripped
+    stripped="$(strip_ansi "$1")"
+    echo ${#stripped}
+}
+
+pad_to_width() {
+    local text="$1"
+    local width="$2"
+    local vlen
+    vlen=$(visible_len "$text")
+    local pad=$((width - vlen))
+    if (( pad < 0 )); then pad=0; fi
+    printf '%s%*s' "$text" "$pad" ""
+}
 
 print_menu_item() {
     local num="$1"
     local icon="$2"
     local name="$3"
-    local mark=" "
+    local mark="  "
     if echo " $SELECTED_TOOLS " | grep -q " $num "; then
-        mark="${GREEN}✔${NC}"
+        mark="${GREEN}✔${NC} "
     fi
-    printf "  %s %2s) %s %-28s" "$mark" "$num" "$icon" "$name"
+    local formatted
+    formatted=$(printf "%s%2s) %s %s" "$mark" "$num" "$icon" "$name")
+    pad_to_width "$formatted" 35
 }
 
 print_menu_row() {
     local col1="$1"
     local col2="$2"
+    local line
     if [[ -n "$col2" ]]; then
-        echo -e "${BOLD}║${NC}${col1}${col2}${BOLD}║${NC}"
+        line="${col1}${col2}"
     else
-        echo -e "${BOLD}║${NC}${col1}$(printf '%36s' '')${BOLD}║${NC}"
+        line="${col1}"
     fi
+    local padded
+    padded="$(pad_to_width "$line" "$BOX_INNER")"
+    echo -e "${BOLD}║${NC}${padded}${BOLD}║${NC}"
 }
 
 print_category_header() {
     local icon="$1"
     local name="$2"
+    local content="  ${CYAN}${icon} ${name}${NC}"
+    local padded
+    padded="$(pad_to_width "$content" "$BOX_INNER")"
     echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║  ${CYAN}${icon} ${name}${NC}$(printf '%*s' $((64 - ${#name})) '')${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}${padded}${BOLD}║${NC}"
     echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════╣${NC}"
 }
 
@@ -2709,7 +2740,10 @@ show_menu_page() {
     echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════╣${NC}"
     
     if [[ -n "$SELECTED_TOOLS" ]]; then
-        echo -e "${BOLD}║  ${GREEN}Selecionados: ${SELECTED_TOOLS}${NC}$(printf '%*s' $((52 - ${#SELECTED_TOOLS})) '')${BOLD}║${NC}"
+        local sel_content="  ${GREEN}Selecionados: ${SELECTED_TOOLS}${NC}"
+        local sel_padded
+        sel_padded="$(pad_to_width "$sel_content" "$BOX_INNER")"
+        echo -e "${BOLD}║${NC}${sel_padded}${BOLD}║${NC}"
     fi
     
     local -a items=()
@@ -2847,7 +2881,9 @@ show_menu_page() {
     esac
     
     echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}║                                                                      ║${NC}"
+    local empty_line
+    empty_line="$(pad_to_width "" "$BOX_INNER")"
+    echo -e "${BOLD}║${NC}${empty_line}${BOLD}║${NC}"
     local nav=""
     if (( page > 1 )); then
         nav="${nav}${YELLOW}[P] ◀ Anterior${NC}   "
@@ -2855,10 +2891,15 @@ show_menu_page() {
     if (( page < total_pages )); then
         nav="${nav}${YELLOW}[N] Próxima ▶${NC}   "
     fi
-    nav="${nav}${GREEN}[0] ✅ Instalar tudo${NC}   ${RED}[99] ❌ Sair${NC}"
-    echo -e "${BOLD}║${NC}  ${nav}${BOLD}  ║${NC}"
-    echo -e "${BOLD}║  ${CYAN}[C] ✅ Confirmar e instalar selecionados${NC}${BOLD}                              ║${NC}"
-    echo -e "${BOLD}║                                                                      ║${NC}"
+    nav="${nav}${GREEN}[0] Instalar tudo${NC}   ${RED}[99] Sair${NC}"
+    local nav_padded
+    nav_padded="$(pad_to_width "  ${nav}" "$BOX_INNER")"
+    echo -e "${BOLD}║${NC}${nav_padded}${BOLD}║${NC}"
+    local confirm_line="  ${CYAN}[C] Confirmar e instalar selecionados${NC}"
+    local confirm_padded
+    confirm_padded="$(pad_to_width "$confirm_line" "$BOX_INNER")"
+    echo -e "${BOLD}║${NC}${confirm_padded}${BOLD}║${NC}"
+    echo -e "${BOLD}║${NC}${empty_line}${BOLD}║${NC}"
     echo -e "${BOLD}╚════════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -2873,7 +2914,8 @@ show_menu() {
         echo -e "  Digite os números separados por espaço, ou ${CYAN}N/P/C/0/99${NC}"
         read -rp "  > " input
         
-        case "${input^^}" in
+        input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
+        case "$input" in
             N)
                 if (( current_page < 4 )); then
                     current_page=$((current_page + 1))
@@ -2905,7 +2947,7 @@ show_menu() {
                 for num in $input; do
                     if [[ "$num" =~ ^[0-9]+$ ]] && (( num >= 1 && num <= 81 )); then
                         if echo " $SELECTED_TOOLS " | grep -q " $num "; then
-                            SELECTED_TOOLS=$(echo "$SELECTED_TOOLS" | sed "s/\b$num\b//g" | xargs)
+                            SELECTED_TOOLS=$(echo " $SELECTED_TOOLS " | sed "s/ $num / /g" | xargs)
                         else
                             SELECTED_TOOLS="$SELECTED_TOOLS $num"
                             SELECTED_TOOLS=$(echo "$SELECTED_TOOLS" | xargs)
