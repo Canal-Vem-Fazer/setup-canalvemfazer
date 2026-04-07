@@ -2653,12 +2653,63 @@ install_wuzapi() {
 # ======================== MENU PRINCIPAL ========================
 
 SELECTED_TOOLS=""
+MENU_STATUS=""
+
+declare -A TOOL_NAMES
+TOOL_NAMES=(
+    [1]="Traefik" [2]="Portainer" [3]="MinIO" [4]="Ntfy" [5]="Gotenberg"
+    [6]="RabbitMQ" [7]="Browserless" [8]="Chatwoot" [9]="Evolution API"
+    [10]="WppConnect" [11]="Quepasa" [12]="Uno API" [13]="Wuzapi"
+    [14]="N8N" [15]="Typebot" [16]="Mautic" [17]="Flowise" [18]="Dify AI"
+    [19]="Ollama" [20]="LangFlow" [21]="Langfuse" [22]="Anything LLM"
+    [23]="Qdrant" [24]="ZEP" [25]="Evo AI" [26]="Bolt" [27]="Woofed CRM"
+    [28]="TwentyCRM" [29]="Krayin CRM" [30]="OpenProject" [31]="Planka"
+    [32]="Focalboard" [33]="GLPI" [34]="Formbricks" [35]="PgAdmin 4"
+    [36]="MongoDB" [37]="Supabase" [38]="PhpMyAdmin" [39]="NocoDB"
+    [40]="Baserow" [41]="Nocobase" [42]="ClickHouse" [43]="RedisInsight"
+    [44]="Metabase" [45]="WordPress" [46]="Directus" [47]="Strapi"
+    [48]="NextCloud" [49]="Wiki.js" [50]="HumHub" [51]="Outline"
+    [52]="Moodle" [53]="Uptime Kuma" [54]="Grafana" [55]="Prometheus"
+    [56]="cAdvisor" [57]="Traccar" [58]="Cal.com" [59]="Appsmith"
+    [60]="LowCoder" [61]="ToolJet" [62]="Excalidraw" [63]="Docuseal"
+    [64]="Documeso" [65]="Stirling PDF" [66]="Easy!Appointments"
+    [67]="WiseMapping" [68]="Affine" [69]="Mattermost" [70]="Odoo"
+    [71]="Frappe" [72]="Keycloak" [73]="VaultWarden" [74]="Passbolt"
+    [75]="Botpress" [76]="Yourls" [77]="Firecrawl" [78]="AzuraCast"
+    [79]="Shlink" [80]="RustDesk" [81]="Hoppscotch"
+)
+
+is_selected() {
+    local num="$1"
+    echo " $SELECTED_TOOLS " | grep -q " $num "
+}
+
+toggle_tool() {
+    local num="$1"
+    if is_selected "$num"; then
+        SELECTED_TOOLS=$(echo " $SELECTED_TOOLS " | sed "s/ $num / /g" | xargs)
+        MENU_STATUS="${RED}✘ ${num}) ${TOOL_NAMES[$num]} removido${NC}"
+    else
+        SELECTED_TOOLS="$SELECTED_TOOLS $num"
+        SELECTED_TOOLS=$(echo "$SELECTED_TOOLS" | xargs)
+        MENU_STATUS="${GREEN}✔ ${num}) ${TOOL_NAMES[$num]} selecionado${NC}"
+    fi
+}
+
+count_selected() {
+    if [[ -z "$SELECTED_TOOLS" ]]; then
+        echo 0
+    else
+        echo "$SELECTED_TOOLS" | wc -w
+    fi
+}
+
 print_menu_item() {
     local num="$1"
     local icon="$2"
     local name="$3"
     local mark="  "
-    if echo " $SELECTED_TOOLS " | grep -q " $num "; then
+    if is_selected "$num"; then
         mark="${GREEN}✔${NC} "
     fi
     printf "  %s%2s) %s %-24s" "$mark" "$num" "$icon" "$name"
@@ -2690,6 +2741,8 @@ print_items_two_col() {
 show_menu_page() {
     local page="$1"
     local total_pages=4
+    local sel_count
+    sel_count=$(count_selected)
     
     clear
     echo ""
@@ -2697,7 +2750,9 @@ show_menu_page() {
     echo -e "  ${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
     if [[ -n "$SELECTED_TOOLS" ]]; then
-        echo -e "  ${GREEN}Selecionados: ${SELECTED_TOOLS}${NC}"
+        echo -e "  ${GREEN}Selecionados (${sel_count}): ${SELECTED_TOOLS}${NC}"
+    else
+        echo -e "  ${YELLOW}Nenhuma ferramenta selecionada ainda${NC}"
     fi
     
     local -a items=()
@@ -2836,6 +2891,12 @@ show_menu_page() {
     
     echo ""
     echo -e "  ${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    
+    if [[ -n "$MENU_STATUS" ]]; then
+        echo -e "  $MENU_STATUS"
+        MENU_STATUS=""
+    fi
+    
     echo ""
     local nav="  "
     if (( page > 1 )); then
@@ -2846,30 +2907,53 @@ show_menu_page() {
     fi
     nav="${nav}${GREEN}[0] Instalar tudo${NC}   ${RED}[99] Sair${NC}"
     echo -e "$nav"
-    echo -e "  ${CYAN}[C] Confirmar e instalar selecionados${NC}"
+    echo -e "  ${CYAN}[C] Confirmar selecionados${NC}"
+    echo ""
+    echo -e "  ${WHITE}Digite número + ENTER para marcar/desmarcar${NC}"
+    if [[ -n "$SELECTED_TOOLS" ]]; then
+        echo -e "  ${GREEN}ENTER sem número = confirmar e instalar${NC}"
+    fi
     echo ""
 }
 
 show_menu() {
     local current_page=1
     SELECTED_TOOLS=""
+    MENU_STATUS=""
     
     while true; do
         show_menu_page "$current_page"
         
-        echo -e "  Digite os números separados por espaço, ou ${CYAN}N/P/C/0/99${NC}"
         read -rp "  > " input
         
+        # Normalizar: trocar vírgulas por espaços, remover extras
+        input=$(echo "$input" | tr ',' ' ' | tr -s ' ' | xargs)
         input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
+        
+        # ENTER vazio
+        if [[ -z "$input" ]]; then
+            if [[ -n "$SELECTED_TOOLS" ]]; then
+                choices="$SELECTED_TOOLS"
+                return
+            else
+                MENU_STATUS="${YELLOW}⚠ Digite um número para selecionar uma ferramenta${NC}"
+                continue
+            fi
+        fi
+        
         case "$input" in
             N)
                 if (( current_page < 4 )); then
                     current_page=$((current_page + 1))
+                else
+                    MENU_STATUS="${YELLOW}⚠ Já está na última página${NC}"
                 fi
                 ;;
             P)
                 if (( current_page > 1 )); then
                     current_page=$((current_page - 1))
+                else
+                    MENU_STATUS="${YELLOW}⚠ Já está na primeira página${NC}"
                 fi
                 ;;
             99)
@@ -2885,19 +2969,17 @@ show_menu() {
                     choices="$SELECTED_TOOLS"
                     return
                 else
-                    echo -e "  ${RED}Nenhuma ferramenta selecionada!${NC}"
-                    sleep 1
+                    MENU_STATUS="${RED}✘ Nenhuma ferramenta selecionada!${NC}"
                 fi
                 ;;
             *)
+                local found_valid=false
                 for num in $input; do
                     if [[ "$num" =~ ^[0-9]+$ ]] && (( num >= 1 && num <= 81 )); then
-                        if echo " $SELECTED_TOOLS " | grep -q " $num "; then
-                            SELECTED_TOOLS=$(echo " $SELECTED_TOOLS " | sed "s/ $num / /g" | xargs)
-                        else
-                            SELECTED_TOOLS="$SELECTED_TOOLS $num"
-                            SELECTED_TOOLS=$(echo "$SELECTED_TOOLS" | xargs)
-                        fi
+                        toggle_tool "$num"
+                        found_valid=true
+                    else
+                        MENU_STATUS="${RED}✘ Opção inválida: ${num}${NC}"
                     fi
                 done
                 ;;
