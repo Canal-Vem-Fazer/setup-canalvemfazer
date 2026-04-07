@@ -22,7 +22,7 @@
 #                                                                              #
 ################################################################################
 
-set -euo pipefail
+set -uo pipefail
 
 # ======================== CORES ========================
 RED='\033[0;31m'
@@ -44,6 +44,7 @@ ACCEPTED_TERMS=false
 declare -A TOOL_DOMAINS
 CREDENTIALS_FILE="/root/vemfazer-credenciais.txt"
 LAST_INSTALL_DIR=""
+MINIO_GENERATED_PWD=""
 LAST_INSTALL_DOMAIN=""
 
 # ======================== FUNÇÕES UTILITÁRIAS ========================
@@ -257,7 +258,31 @@ check_requirements() {
     fi
 }
 
+check_ports() {
+    local ports_busy=false
+    for port in 80 443; do
+        if ss -tlnp 2>/dev/null | grep -q ":${port} " || netstat -tlnp 2>/dev/null | grep -q ":${port} "; then
+            local proc
+            proc=$(ss -tlnp 2>/dev/null | grep ":${port} " | awk '{print $NF}' | head -1)
+            log_warn "Porta ${port} já está em uso por: ${proc:-processo desconhecido}"
+            ports_busy=true
+        fi
+    done
+    if [[ "$ports_busy" == true ]]; then
+        echo ""
+        log_warn "As portas 80 e/ou 443 estão ocupadas. O Traefik pode falhar ao iniciar."
+        log_warn "Verifique se há outro servidor web (Apache, Nginx) rodando e pare-o."
+        echo ""
+        read -rp "$(echo -e ${YELLOW}'Continuar mesmo assim? [s/N]: '${NC})" continue_anyway
+        if [[ "${continue_anyway,,}" != "s" ]]; then
+            log_info "Instalação cancelada."
+            exit 0
+        fi
+    fi
+}
+
 # ======================== INSTALAÇÃO DO DOCKER ========================
+
 
 install_docker() {
     if command -v docker &>/dev/null; then
@@ -408,7 +433,7 @@ declare -A TOOL_DEPS=(
     [77]="1"   # Firecrawl → Traefik
     [78]="1"   # AzuraCast → Traefik
     [79]="1"   # Shlink → Traefik
-    [80]="1"   # RustDesk → Traefik
+    [80]=""    # RustDesk — sem Traefik (portas diretas)
     [81]="1"   # Hoppscotch → Traefik
 )
 
@@ -447,6 +472,37 @@ resolve_dependencies() {
     echo "$resolved" | tr ' ' '\n' | sort -un | tr '\n' ' ' | xargs
 }
 
+validate_domain() {
+    local domain="$1"
+    # Não pode ser vazio
+    if [[ -z "$domain" ]]; then
+        return 1
+    fi
+    # Deve conter pelo menos um ponto
+    if [[ "$domain" != *.* ]]; then
+        return 1
+    fi
+    # Não pode conter espaços ou caracteres especiais
+    if [[ "$domain" =~ [[:space:]] ]] || [[ "$domain" =~ [^a-zA-Z0-9.\-] ]]; then
+        return 1
+    fi
+    return 0
+}
+
+read_valid_domain() {
+    local prompt="$1"
+    local domain=""
+    while true; do
+        read -rp "$prompt" domain
+        domain="${domain,,}"  # converter para minúsculas
+        if validate_domain "$domain"; then
+            echo "$domain"
+            return
+        fi
+        echo -e "     ${RED}⚠️  Domínio inválido! Use o formato: sub.dominio.com${NC}"
+    done
+}
+
 ask_subdomains() {
     local selected_tools="$1"
     
@@ -465,15 +521,20 @@ ask_subdomains() {
         
         [[ -z "$name" ]] && continue
         
+        # RustDesk não precisa de subdomínio (portas diretas)
+        if [[ "$num" == "80" ]]; then
+            echo -e "  ${CYAN}📦 ${name}${NC} — ${YELLOW}sem subdomínio (portas diretas)${NC}"
+            echo ""
+            continue
+        fi
+        
         # Typebot precisa de 2 subdomínios (Builder + Viewer)
         if [[ "$num" == "15" ]]; then
             echo -e "  ${CYAN}📦 ${name} (Builder)${NC}"
-            read -rp "     Subdomínio (ex: typebot.meudominio.com): " typebot_builder_domain
-            TOOL_DOMAINS["typebot"]="$typebot_builder_domain"
+            TOOL_DOMAINS["typebot"]=$(read_valid_domain "     Subdomínio (ex: typebot.meudominio.com): ")
             echo ""
             echo -e "  ${CYAN}📦 ${name} (Viewer)${NC}"
-            read -rp "     Subdomínio (ex: bot.meudominio.com): " typebot_viewer_domain
-            TOOL_DOMAINS["typebot-viewer"]="$typebot_viewer_domain"
+            TOOL_DOMAINS["typebot-viewer"]=$(read_valid_domain "     Subdomínio (ex: bot.meudominio.com): ")
             echo ""
             continue
         fi
@@ -481,19 +542,16 @@ ask_subdomains() {
         # MinIO precisa de 2 subdomínios (Console + API S3)
         if [[ "$num" == "3" ]]; then
             echo -e "  ${CYAN}📦 ${name} (Console / Web UI)${NC}"
-            read -rp "     Subdomínio (ex: minio.meudominio.com): " minio_console_domain
-            TOOL_DOMAINS["minio"]="$minio_console_domain"
+            TOOL_DOMAINS["minio"]=$(read_valid_domain "     Subdomínio (ex: minio.meudominio.com): ")
             echo ""
             echo -e "  ${CYAN}📦 ${name} (API S3)${NC}"
-            read -rp "     Subdomínio (ex: s3.meudominio.com): " minio_api_domain
-            TOOL_DOMAINS["minio-api"]="$minio_api_domain"
+            TOOL_DOMAINS["minio-api"]=$(read_valid_domain "     Subdomínio (ex: s3.meudominio.com): ")
             echo ""
             continue
         fi
         
         echo -e "  ${CYAN}📦 ${name}${NC}"
-        read -rp "     Subdomínio (ex: ${default_sub}.meudominio.com): " tool_domain
-        TOOL_DOMAINS["$default_sub"]="$tool_domain"
+        TOOL_DOMAINS["$default_sub"]=$(read_valid_domain "     Subdomínio (ex: ${default_sub}.meudominio.com): ")
         echo ""
     done
     
@@ -589,17 +647,32 @@ show_install_result() {
         echo -e "${GREEN}║${NC}  ${extra_info}"
     fi
     
-    # Status dos containers
+    # Status dos containers com retry
     if [[ -n "$compose_dir" ]] && [[ -f "$compose_dir/docker-compose.yml" ]]; then
         printf "${GREEN}║${NC}  %-$(($width - 3))s${GREEN}║${NC}\n" ""
         printf "${GREEN}║${NC}  📦 %-$(($width - 6))s${GREEN}║${NC}\n" "Containers:"
         
-        sleep 3
+        sleep 5
         
+        local has_restarting=false
         local ps_output
         ps_output=$(cd "$compose_dir" && docker compose ps --format "{{.Name}}|{{.State}}" 2>/dev/null || true)
         
         if [[ -n "$ps_output" ]]; then
+            while IFS='|' read -r cname cstate; do
+                [[ -z "$cname" ]] && continue
+                if [[ "$cstate" == "restarting" ]]; then
+                    has_restarting=true
+                fi
+            done <<< "$ps_output"
+            
+            # Se algum container está restarting, aguardar mais e re-checar
+            if [[ "$has_restarting" == true ]]; then
+                printf "${GREEN}║${NC}     %-$(($width - 6))s${GREEN}║${NC}\n" "⏳ Aguardando containers estabilizarem..."
+                sleep 10
+                ps_output=$(cd "$compose_dir" && docker compose ps --format "{{.Name}}|{{.State}}" 2>/dev/null || true)
+            fi
+            
             while IFS='|' read -r cname cstate; do
                 [[ -z "$cname" ]] && continue
                 local icon
@@ -688,7 +761,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     TRAEFIK_INSTALLED=true
     local traefik_url=""
     if [[ -n "$traefik_domain" ]]; then
@@ -752,7 +825,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     # Retornar diretório e domínio para funções que chamam install_service
     LAST_INSTALL_DIR="$dir"
     LAST_INSTALL_DOMAIN="$full_domain"
@@ -772,6 +845,7 @@ install_minio() {
     local MINIO_API_DOMAIN="${TOOL_DOMAINS[minio-api]:-s3.exemplo.com}"
     local pwd
     pwd=$(generate_password)
+    MINIO_GENERATED_PWD="$pwd"
     local dir="$DOCKER_COMPOSE_DIR/minio"
     mkdir -p "$dir"
 
@@ -812,7 +886,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     show_install_result "MinIO" "https://${MINIO_CONSOLE_DOMAIN}" "admin" "$pwd" "📡 API S3: https://${MINIO_API_DOMAIN}" "$dir"
 }
 
@@ -856,12 +930,12 @@ install_chatwoot() {
     # Detectar se MinIO está disponível para storage S3
     local s3_env=""
     local MINIO_API_DOMAIN="${TOOL_DOMAINS[minio-api]:-}"
-    if [[ -n "$MINIO_API_DOMAIN" ]]; then
+    if [[ -n "$MINIO_API_DOMAIN" ]] && [[ -n "$MINIO_GENERATED_PWD" ]]; then
         s3_env="
       ACTIVE_STORAGE_SERVICE: amazon
       S3_BUCKET_NAME: chatwoot
       AWS_ACCESS_KEY_ID: admin
-      AWS_SECRET_ACCESS_KEY: \${MINIO_PASSWORD:-changeme}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_GENERATED_PWD}
       AWS_REGION: us-east-1
       S3_ENDPOINT: https://${MINIO_API_DOMAIN}"
     fi
@@ -941,7 +1015,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     show_install_result "Chatwoot" "https://${CHATWOOT_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${secret}\n${GREEN}║${NC}  ✔ Sidekiq (worker) incluído" "$dir"
 }
 
@@ -1003,7 +1077,7 @@ services:
       ENCRYPTION_SECRET: ${encryption_secret}
       NEXTAUTH_SECRET: ${nextauth_secret}
       S3_ACCESS_KEY: admin
-      S3_SECRET_KEY: \${MINIO_PASSWORD:-changeme}
+      S3_SECRET_KEY: ${MINIO_GENERATED_PWD:-changeme}
       S3_BUCKET: typebot
       S3_ENDPOINT: https://${MINIO_API_DOMAIN}
     networks:
@@ -1027,7 +1101,7 @@ services:
       NEXT_PUBLIC_VIEWER_URL: https://${TYPEBOT_VIEWER_DOMAIN}
       ENCRYPTION_SECRET: ${encryption_secret}
       S3_ACCESS_KEY: admin
-      S3_SECRET_KEY: \${MINIO_PASSWORD:-changeme}
+      S3_SECRET_KEY: ${MINIO_GENERATED_PWD:-changeme}
       S3_BUCKET: typebot
       S3_ENDPOINT: https://${MINIO_API_DOMAIN}
     networks:
@@ -1047,7 +1121,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     show_install_result "Typebot" "https://${TYPEBOT_BUILDER_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${secret}\n${GREEN}║${NC}  🌐 Viewer: https://${TYPEBOT_VIEWER_DOMAIN}" "$dir"
 }
 
@@ -1107,7 +1181,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     show_install_result "Mautic" "https://${MAUTIC_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -1121,6 +1195,7 @@ install_flowise() {
 }
 
 install_dify() {
+    local DIFY_DOMAIN="${TOOL_DOMAINS[dify]:-dify.exemplo.com}"
     log_info "Instalando Dify AI..."
     local dir="$DOCKER_COMPOSE_DIR/dify"
     mkdir -p "$dir"
@@ -1128,9 +1203,18 @@ install_dify() {
     
     if [[ ! -f docker-compose.yml ]]; then
         curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/docker-compose.yaml -o docker-compose.yml
+        # Injetar labels Traefik no serviço nginx do Dify
+        if grep -q "nginx:" docker-compose.yml; then
+            sed -i '/nginx:/,/ports:/{ /ports:/a\    labels:\n      - "traefik.enable=true"\n      - "traefik.http.routers.dify.rule=Host(\`'"${DIFY_DOMAIN}"'\`)"\n      - "traefik.http.routers.dify.entrypoints=websecure"\n      - "traefik.http.routers.dify.tls.certresolver=letsencrypt"\n      - "traefik.http.services.dify.loadbalancer.server.port=80"\n    networks:\n      - proxy
+        }' docker-compose.yml 2>/dev/null || true
+        fi
+        # Adicionar rede proxy se não existir
+        if ! grep -q "proxy:" docker-compose.yml; then
+            echo -e "\nnetworks:\n  proxy:\n    external: true" >> docker-compose.yml
+        fi
     fi
-    docker compose up -d
-    show_install_result "Dify AI" "https://${TOOL_DOMAINS[dify]:-dify.exemplo.com}" "(criar no primeiro acesso)" "" "" "$dir"
+    docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Dify AI" "https://${DIFY_DOMAIN}" "(criar no primeiro acesso)" "" "" "$dir"
 }
 
 install_ollama() {
@@ -1196,7 +1280,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     show_install_result "Langfuse" "https://${LANGFUSE_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -1234,8 +1318,62 @@ install_woofed_crm() {
 }
 
 install_twentycrm() {
-    install_service "TwentyCRM" "twentycrm" "twentycrm/twenty:latest" "3000"
-    show_install_result "TwentyCRM" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
+    local TWENTY_DOMAIN="${TOOL_DOMAINS[twentycrm]:-twentycrm.exemplo.com}"
+    local pwd
+    pwd=$(generate_password)
+    local dir="$DOCKER_COMPOSE_DIR/twentycrm"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  twentycrm-db:
+    image: postgres:15
+    container_name: twentycrm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: twenty
+      POSTGRES_USER: twenty
+      POSTGRES_PASSWORD: ${pwd}
+    volumes:
+      - twentycrm_db:/var/lib/postgresql/data
+    networks:
+      - proxy
+
+  twentycrm:
+    image: twentycrm/twenty:latest
+    container_name: twentycrm
+    restart: unless-stopped
+    depends_on:
+      - twentycrm-db
+    environment:
+      PG_DATABASE_URL: postgres://twenty:${pwd}@twentycrm-db:5432/twenty
+      FRONT_BASE_URL: https://${TWENTY_DOMAIN}
+      SERVER_URL: https://${TWENTY_DOMAIN}
+      ACCESS_TOKEN_SECRET: $(generate_password 32)
+      LOGIN_TOKEN_SECRET: $(generate_password 32)
+      REFRESH_TOKEN_SECRET: $(generate_password 32)
+      FILE_TOKEN_SECRET: $(generate_password 32)
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.twentycrm.rule=Host(\`${TWENTY_DOMAIN}\`)"
+      - "traefik.http.routers.twentycrm.entrypoints=websecure"
+      - "traefik.http.routers.twentycrm.tls.certresolver=letsencrypt"
+      - "traefik.http.services.twentycrm.loadbalancer.server.port=3000"
+
+volumes:
+  twentycrm_db:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "TwentyCRM" "https://${TWENTY_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_krayin_crm() {
@@ -1319,7 +1457,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     show_install_result "GLPI" "https://${GLPI_DOMAIN}" "glpi" "glpi (alterar no primeiro acesso)" "🔑 Senha DB: ${pwd}\n${GREEN}║${NC}  ℹ️  Outros logins padrão: tech/tech, normal/normal, post-only/postonly" "$dir"
 }
 
@@ -1347,6 +1485,7 @@ install_mongodb() {
 }
 
 install_supabase() {
+    local SUPABASE_DOMAIN="${TOOL_DOMAINS[supabase]:-supabase.exemplo.com}"
     log_info "Instalando Supabase..."
     local dir="$DOCKER_COMPOSE_DIR/supabase"
     mkdir -p "$dir"
@@ -1357,8 +1496,19 @@ install_supabase() {
         cp -r "$dir/repo/docker" "$dir/docker"
         rm -rf "$dir/repo"
     fi
-    cd "$dir/docker" && docker compose up -d
-    show_install_result "Supabase" "https://${TOOL_DOMAINS[supabase]:-supabase.exemplo.com}" "(criar no primeiro acesso)" "" "" "$dir/docker"
+    # Injetar labels Traefik no serviço kong/studio
+    local compose_file="$dir/docker/docker-compose.yml"
+    if [[ -f "$compose_file" ]]; then
+        if grep -q "studio:" "$compose_file" && ! grep -q "traefik.http.routers.supabase" "$compose_file"; then
+            sed -i '/studio:/,/ports:/{ /ports:/a\    labels:\n      - "traefik.enable=true"\n      - "traefik.http.routers.supabase.rule=Host(\`'"${SUPABASE_DOMAIN}"'\`)"\n      - "traefik.http.routers.supabase.entrypoints=websecure"\n      - "traefik.http.routers.supabase.tls.certresolver=letsencrypt"\n      - "traefik.http.services.supabase.loadbalancer.server.port=3000"\n    networks:\n      - proxy
+            }' "$compose_file" 2>/dev/null || true
+        fi
+        if ! grep -q "proxy:" "$compose_file"; then
+            echo -e "\nnetworks:\n  proxy:\n    external: true" >> "$compose_file"
+        fi
+    fi
+    cd "$dir/docker" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Supabase" "https://${SUPABASE_DOMAIN}" "(criar no primeiro acesso)" "" "" "$dir/docker"
 }
 
 install_phpmyadmin() {
@@ -1381,8 +1531,61 @@ install_baserow() {
 }
 
 install_nocobase() {
-    install_service "Nocobase" "nocobase" "nocobase/nocobase:latest" "13000"
-    show_install_result "Nocobase" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
+    local NOCOBASE_DOMAIN="${TOOL_DOMAINS[nocobase]:-nocobase.exemplo.com}"
+    local pwd
+    pwd=$(generate_password)
+    local dir="$DOCKER_COMPOSE_DIR/nocobase"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  nocobase-db:
+    image: postgres:15
+    container_name: nocobase-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nocobase
+      POSTGRES_USER: nocobase
+      POSTGRES_PASSWORD: ${pwd}
+    volumes:
+      - nocobase_db:/var/lib/postgresql/data
+    networks:
+      - proxy
+
+  nocobase:
+    image: nocobase/nocobase:latest
+    container_name: nocobase
+    restart: unless-stopped
+    depends_on:
+      - nocobase-db
+    environment:
+      DB_DIALECT: postgres
+      DB_HOST: nocobase-db
+      DB_PORT: 5432
+      DB_DATABASE: nocobase
+      DB_USER: nocobase
+      DB_PASSWORD: ${pwd}
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nocobase.rule=Host(\`${NOCOBASE_DOMAIN}\`)"
+      - "traefik.http.routers.nocobase.entrypoints=websecure"
+      - "traefik.http.routers.nocobase.tls.certresolver=letsencrypt"
+      - "traefik.http.services.nocobase.loadbalancer.server.port=13000"
+
+volumes:
+  nocobase_db:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Nocobase" "https://${NOCOBASE_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_clickhouse() {
@@ -1457,21 +1660,136 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     show_install_result "WordPress" "https://${WORDPRESS_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_directus() {
+    local DIRECTUS_DOMAIN="${TOOL_DOMAINS[directus]:-directus.exemplo.com}"
     local pwd
     pwd=$(generate_password)
-    install_service "Directus" "directus" "directus/directus:latest" "8055" \
-        "      KEY: $(generate_password 32)\n      SECRET: $(generate_password 32)\n      ADMIN_EMAIL: ${EMAIL}\n      ADMIN_PASSWORD: ${pwd}"
-    show_install_result "Directus" "https://${LAST_INSTALL_DOMAIN}" "$EMAIL" "$pwd" "" "$LAST_INSTALL_DIR"
+    local db_pwd
+    db_pwd=$(generate_password)
+    local dir="$DOCKER_COMPOSE_DIR/directus"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  directus-db:
+    image: postgres:15
+    container_name: directus-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: directus
+      POSTGRES_USER: directus
+      POSTGRES_PASSWORD: ${db_pwd}
+    volumes:
+      - directus_db:/var/lib/postgresql/data
+    networks:
+      - proxy
+
+  directus:
+    image: directus/directus:latest
+    container_name: directus
+    restart: unless-stopped
+    depends_on:
+      - directus-db
+    environment:
+      KEY: $(generate_password 32)
+      SECRET: $(generate_password 32)
+      DB_CLIENT: pg
+      DB_HOST: directus-db
+      DB_PORT: 5432
+      DB_DATABASE: directus
+      DB_USER: directus
+      DB_PASSWORD: ${db_pwd}
+      ADMIN_EMAIL: ${EMAIL}
+      ADMIN_PASSWORD: ${pwd}
+    volumes:
+      - directus_uploads:/directus/uploads
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.directus.rule=Host(\`${DIRECTUS_DOMAIN}\`)"
+      - "traefik.http.routers.directus.entrypoints=websecure"
+      - "traefik.http.routers.directus.tls.certresolver=letsencrypt"
+      - "traefik.http.services.directus.loadbalancer.server.port=8055"
+
+volumes:
+  directus_db:
+  directus_uploads:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Directus" "https://${DIRECTUS_DOMAIN}" "$EMAIL" "$pwd" "🔑 Senha DB: ${db_pwd}" "$dir"
 }
 
 install_strapi() {
-    install_service "Strapi" "strapi" "strapi/strapi:latest" "1337"
-    show_install_result "Strapi" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
+    local STRAPI_DOMAIN="${TOOL_DOMAINS[strapi]:-strapi.exemplo.com}"
+    local pwd
+    pwd=$(generate_password)
+    local dir="$DOCKER_COMPOSE_DIR/strapi"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  strapi-db:
+    image: postgres:15
+    container_name: strapi-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: strapi
+      POSTGRES_USER: strapi
+      POSTGRES_PASSWORD: ${pwd}
+    volumes:
+      - strapi_db:/var/lib/postgresql/data
+    networks:
+      - proxy
+
+  strapi:
+    image: strapi/strapi:latest
+    container_name: strapi
+    restart: unless-stopped
+    depends_on:
+      - strapi-db
+    environment:
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: strapi-db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: strapi
+      DATABASE_USERNAME: strapi
+      DATABASE_PASSWORD: ${pwd}
+    volumes:
+      - strapi_data:/srv/app
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.strapi.rule=Host(\`${STRAPI_DOMAIN}\`)"
+      - "traefik.http.routers.strapi.entrypoints=websecure"
+      - "traefik.http.routers.strapi.tls.certresolver=letsencrypt"
+      - "traefik.http.services.strapi.loadbalancer.server.port=1337"
+
+volumes:
+  strapi_db:
+  strapi_data:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Strapi" "https://${STRAPI_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_nextcloud() {
@@ -1537,19 +1855,140 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     show_install_result "Wiki.js" "https://${WIKIJS_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_humhub() {
-    install_service "HumHub" "humhub" "mriedmann/humhub:latest" "80"
-    show_install_result "HumHub" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
+    local HUMHUB_DOMAIN="${TOOL_DOMAINS[humhub]:-humhub.exemplo.com}"
+    local pwd
+    pwd=$(generate_password)
+    local dir="$DOCKER_COMPOSE_DIR/humhub"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  humhub-db:
+    image: mariadb:10.11
+    container_name: humhub-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${pwd}
+      MYSQL_DATABASE: humhub
+      MYSQL_USER: humhub
+      MYSQL_PASSWORD: ${pwd}
+    volumes:
+      - humhub_db:/var/lib/mysql
+    networks:
+      - proxy
+
+  humhub:
+    image: mriedmann/humhub:latest
+    container_name: humhub
+    restart: unless-stopped
+    depends_on:
+      - humhub-db
+    environment:
+      HUMHUB_DB_HOST: humhub-db
+      HUMHUB_DB_NAME: humhub
+      HUMHUB_DB_USER: humhub
+      HUMHUB_DB_PASSWORD: ${pwd}
+    volumes:
+      - humhub_config:/var/www/localhost/htdocs/protected/config
+      - humhub_uploads:/var/www/localhost/htdocs/uploads
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.humhub.rule=Host(\`${HUMHUB_DOMAIN}\`)"
+      - "traefik.http.routers.humhub.entrypoints=websecure"
+      - "traefik.http.routers.humhub.tls.certresolver=letsencrypt"
+      - "traefik.http.services.humhub.loadbalancer.server.port=80"
+
+volumes:
+  humhub_db:
+  humhub_config:
+  humhub_uploads:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "HumHub" "https://${HUMHUB_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_outline() {
-    install_service "Outline" "outline" "outlinewiki/outline:latest" "3000" \
-        "      URL: https://${TOOL_DOMAINS[outline]}\n      SECRET_KEY: $(generate_password 32)\n      UTILS_SECRET: $(generate_password 32)"
-    show_install_result "Outline" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
+    local OUTLINE_DOMAIN="${TOOL_DOMAINS[outline]:-outline.exemplo.com}"
+    local pwd
+    pwd=$(generate_password)
+    local secret_key
+    secret_key=$(generate_password 32)
+    local utils_secret
+    utils_secret=$(generate_password 32)
+    local dir="$DOCKER_COMPOSE_DIR/outline"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  outline-db:
+    image: postgres:15
+    container_name: outline-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: outline
+      POSTGRES_USER: outline
+      POSTGRES_PASSWORD: ${pwd}
+    volumes:
+      - outline_db:/var/lib/postgresql/data
+    networks:
+      - proxy
+
+  outline-redis:
+    image: redis:7-alpine
+    container_name: outline-redis
+    restart: unless-stopped
+    networks:
+      - proxy
+
+  outline:
+    image: outlinewiki/outline:latest
+    container_name: outline
+    restart: unless-stopped
+    depends_on:
+      - outline-db
+      - outline-redis
+    environment:
+      URL: https://${OUTLINE_DOMAIN}
+      DATABASE_URL: postgres://outline:${pwd}@outline-db:5432/outline
+      REDIS_URL: redis://outline-redis:6379
+      SECRET_KEY: ${secret_key}
+      UTILS_SECRET: ${utils_secret}
+      FORCE_HTTPS: false
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.outline.rule=Host(\`${OUTLINE_DOMAIN}\`)"
+      - "traefik.http.routers.outline.entrypoints=websecure"
+      - "traefik.http.routers.outline.tls.certresolver=letsencrypt"
+      - "traefik.http.services.outline.loadbalancer.server.port=3000"
+
+volumes:
+  outline_db:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Outline" "https://${OUTLINE_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_moodle() {
@@ -1613,7 +2052,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     show_install_result "cAdvisor" "https://${CADVISOR_DOMAIN}" "" "" "" "$dir"
 }
 
@@ -1624,9 +2063,59 @@ install_traccar() {
 }
 
 install_calcom() {
-    install_service "Cal.com" "calcom" "calcom/cal.com:latest" "3000" \
-        "      NEXT_PUBLIC_WEBAPP_URL: https://${TOOL_DOMAINS[calcom]}\n      NEXTAUTH_SECRET: $(generate_password 32)\n      CALENDSO_ENCRYPTION_KEY: $(generate_password 32)"
-    show_install_result "Cal.com" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
+    local CALCOM_DOMAIN="${TOOL_DOMAINS[calcom]:-calcom.exemplo.com}"
+    local pwd
+    pwd=$(generate_password)
+    local dir="$DOCKER_COMPOSE_DIR/calcom"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  calcom-db:
+    image: postgres:15
+    container_name: calcom-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: calcom
+      POSTGRES_USER: calcom
+      POSTGRES_PASSWORD: ${pwd}
+    volumes:
+      - calcom_db:/var/lib/postgresql/data
+    networks:
+      - proxy
+
+  calcom:
+    image: calcom/cal.com:latest
+    container_name: calcom
+    restart: unless-stopped
+    depends_on:
+      - calcom-db
+    environment:
+      DATABASE_URL: postgres://calcom:${pwd}@calcom-db:5432/calcom
+      NEXT_PUBLIC_WEBAPP_URL: https://${CALCOM_DOMAIN}
+      NEXTAUTH_SECRET: $(generate_password 32)
+      CALENDSO_ENCRYPTION_KEY: $(generate_password 32)
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.calcom.rule=Host(\`${CALCOM_DOMAIN}\`)"
+      - "traefik.http.routers.calcom.entrypoints=websecure"
+      - "traefik.http.routers.calcom.tls.certresolver=letsencrypt"
+      - "traefik.http.services.calcom.loadbalancer.server.port=3000"
+
+volumes:
+  calcom_db:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Cal.com" "https://${CALCOM_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_appsmith() {
@@ -1668,9 +2157,61 @@ install_stirling_pdf() {
 }
 
 install_easy_appointments() {
-    install_service "Easy!Appointments" "appointments" "alextselegidis/easyappointments:latest" "80" \
-        "      BASE_URL: https://${TOOL_DOMAINS[appointments]}"
-    show_install_result "Easy!Appointments" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
+    local EA_DOMAIN="${TOOL_DOMAINS[appointments]:-appointments.exemplo.com}"
+    local pwd
+    pwd=$(generate_password)
+    local dir="$DOCKER_COMPOSE_DIR/appointments"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  appointments-db:
+    image: mariadb:10.11
+    container_name: appointments-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${pwd}
+      MYSQL_DATABASE: easyappointments
+      MYSQL_USER: easyapp
+      MYSQL_PASSWORD: ${pwd}
+    volumes:
+      - appointments_db:/var/lib/mysql
+    networks:
+      - proxy
+
+  appointments:
+    image: alextselegidis/easyappointments:latest
+    container_name: appointments
+    restart: unless-stopped
+    depends_on:
+      - appointments-db
+    environment:
+      BASE_URL: https://${EA_DOMAIN}
+      DB_HOST: appointments-db
+      DB_NAME: easyappointments
+      DB_USERNAME: easyapp
+      DB_PASSWORD: ${pwd}
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.appointments.rule=Host(\`${EA_DOMAIN}\`)"
+      - "traefik.http.routers.appointments.entrypoints=websecure"
+      - "traefik.http.routers.appointments.tls.certresolver=letsencrypt"
+      - "traefik.http.services.appointments.loadbalancer.server.port=80"
+
+volumes:
+  appointments_db:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Easy!Appointments" "https://${EA_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_wisemapping() {
@@ -1684,9 +2225,67 @@ install_affine() {
 }
 
 install_mattermost() {
-    install_service "Mattermost" "mattermost" "mattermost/mattermost-team-edition:latest" "8065" "" \
-        "      - mattermost_data:/mattermost"
-    show_install_result "Mattermost" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
+    local MM_DOMAIN="${TOOL_DOMAINS[mattermost]:-mattermost.exemplo.com}"
+    local pwd
+    pwd=$(generate_password)
+    local dir="$DOCKER_COMPOSE_DIR/mattermost"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  mattermost-db:
+    image: postgres:15
+    container_name: mattermost-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mattermost
+      POSTGRES_USER: mattermost
+      POSTGRES_PASSWORD: ${pwd}
+    volumes:
+      - mm_db:/var/lib/postgresql/data
+    networks:
+      - proxy
+
+  mattermost:
+    image: mattermost/mattermost-team-edition:latest
+    container_name: mattermost
+    restart: unless-stopped
+    depends_on:
+      - mattermost-db
+    environment:
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: postgres://mattermost:${pwd}@mattermost-db:5432/mattermost?sslmode=disable
+      MM_SERVICESETTINGS_SITEURL: https://${MM_DOMAIN}
+    volumes:
+      - mm_data:/mattermost/data
+      - mm_logs:/mattermost/logs
+      - mm_config:/mattermost/config
+      - mm_plugins:/mattermost/plugins
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mattermost.rule=Host(\`${MM_DOMAIN}\`)"
+      - "traefik.http.routers.mattermost.entrypoints=websecure"
+      - "traefik.http.routers.mattermost.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mattermost.loadbalancer.server.port=8065"
+
+volumes:
+  mm_db:
+  mm_data:
+  mm_logs:
+  mm_config:
+  mm_plugins:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Mattermost" "https://${MM_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_odoo() {
@@ -1745,13 +2344,83 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
     show_install_result "Odoo" "https://${ODOO_DOMAIN}" "admin (definir no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_frappe() {
-    install_service "Frappe" "frappe" "frappe/bench:latest" "8000"
-    show_install_result "Frappe" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
+    local FRAPPE_DOMAIN="${TOOL_DOMAINS[frappe]:-frappe.exemplo.com}"
+    local pwd
+    pwd=$(generate_password)
+    local dir="$DOCKER_COMPOSE_DIR/frappe"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  frappe-db:
+    image: mariadb:10.11
+    container_name: frappe-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${pwd}
+      MYSQL_DATABASE: frappe
+      MYSQL_USER: frappe
+      MYSQL_PASSWORD: ${pwd}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - frappe_db:/var/lib/mysql
+    networks:
+      - proxy
+
+  frappe-redis:
+    image: redis:7-alpine
+    container_name: frappe-redis
+    restart: unless-stopped
+    networks:
+      - proxy
+
+  frappe:
+    image: frappe/erpnext:latest
+    container_name: frappe
+    restart: unless-stopped
+    depends_on:
+      - frappe-db
+      - frappe-redis
+    environment:
+      DB_HOST: frappe-db
+      DB_PORT: 3306
+      REDIS_CACHE: redis://frappe-redis:6379/0
+      REDIS_QUEUE: redis://frappe-redis:6379/1
+      REDIS_SOCKETIO: redis://frappe-redis:6379/2
+      SITE_NAME: ${FRAPPE_DOMAIN}
+      ADMIN_PASSWORD: ${pwd}
+      INSTALL_APPS: erpnext
+    volumes:
+      - frappe_sites:/home/frappe/frappe-bench/sites
+      - frappe_logs:/home/frappe/frappe-bench/logs
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frappe.rule=Host(\`${FRAPPE_DOMAIN}\`)"
+      - "traefik.http.routers.frappe.entrypoints=websecure"
+      - "traefik.http.routers.frappe.tls.certresolver=letsencrypt"
+      - "traefik.http.services.frappe.loadbalancer.server.port=8080"
+
+volumes:
+  frappe_db:
+  frappe_sites:
+  frappe_logs:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Frappe/ERPNext" "https://${FRAPPE_DOMAIN}" "Administrator" "$pwd" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
 install_keycloak() {
@@ -1772,9 +2441,62 @@ install_vaultwarden() {
 }
 
 install_passbolt() {
-    install_service "Passbolt" "passbolt" "passbolt/passbolt:latest-ce" "443" \
-        "      APP_FULL_BASE_URL: https://${TOOL_DOMAINS[passbolt]}\n      DATASOURCES_DEFAULT_HOST: passbolt-db"
-    show_install_result "Passbolt" "https://${LAST_INSTALL_DOMAIN}" "(criar no primeiro acesso)" "" "" "$LAST_INSTALL_DIR"
+    local PASSBOLT_DOMAIN="${TOOL_DOMAINS[passbolt]:-passbolt.exemplo.com}"
+    local pwd
+    pwd=$(generate_password)
+    local dir="$DOCKER_COMPOSE_DIR/passbolt"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  passbolt-db:
+    image: mariadb:10.11
+    container_name: passbolt-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${pwd}
+      MYSQL_DATABASE: passbolt
+      MYSQL_USER: passbolt
+      MYSQL_PASSWORD: ${pwd}
+    volumes:
+      - passbolt_db:/var/lib/mysql
+    networks:
+      - proxy
+
+  passbolt:
+    image: passbolt/passbolt:latest-ce
+    container_name: passbolt
+    restart: unless-stopped
+    depends_on:
+      - passbolt-db
+    environment:
+      APP_FULL_BASE_URL: https://${PASSBOLT_DOMAIN}
+      DATASOURCES_DEFAULT_HOST: passbolt-db
+      DATASOURCES_DEFAULT_USERNAME: passbolt
+      DATASOURCES_DEFAULT_PASSWORD: ${pwd}
+      DATASOURCES_DEFAULT_DATABASE: passbolt
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.passbolt.rule=Host(\`${PASSBOLT_DOMAIN}\`)"
+      - "traefik.http.routers.passbolt.entrypoints=websecure"
+      - "traefik.http.routers.passbolt.tls.certresolver=letsencrypt"
+      - "traefik.http.services.passbolt.loadbalancer.server.port=443"
+      - "traefik.http.services.passbolt.loadbalancer.server.scheme=https"
+
+volumes:
+  passbolt_db:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Passbolt" "https://${PASSBOLT_DOMAIN}" "(criar via CLI)" "" "🔑 Senha DB: ${pwd}\n${GREEN}║${NC}  ℹ️  Criar admin: docker exec passbolt su -m -c \"bin/cake passbolt register_user -u EMAIL -f NOME -l SOBRENOME -r admin\" -s /bin/sh www-data" "$dir"
 }
 
 install_botpress() {
@@ -1784,11 +2506,65 @@ install_botpress() {
 }
 
 install_yourls() {
+    local YOURLS_DOMAIN="${TOOL_DOMAINS[yourls]:-yourls.exemplo.com}"
     local pwd
     pwd=$(generate_password)
-    install_service "Yourls" "yourls" "yourls:latest" "80" \
-        "      YOURLS_SITE: https://${TOOL_DOMAINS[yourls]}\n      YOURLS_USER: admin\n      YOURLS_PASS: ${pwd}"
-    show_install_result "Yourls" "https://${LAST_INSTALL_DOMAIN}" "admin" "$pwd" "" "$LAST_INSTALL_DIR"
+    local db_pwd
+    db_pwd=$(generate_password)
+    local dir="$DOCKER_COMPOSE_DIR/yourls"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  yourls-db:
+    image: mariadb:10.11
+    container_name: yourls-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${db_pwd}
+      MYSQL_DATABASE: yourls
+      MYSQL_USER: yourls
+      MYSQL_PASSWORD: ${db_pwd}
+    volumes:
+      - yourls_db:/var/lib/mysql
+    networks:
+      - proxy
+
+  yourls:
+    image: yourls:latest
+    container_name: yourls
+    restart: unless-stopped
+    depends_on:
+      - yourls-db
+    environment:
+      YOURLS_DB_HOST: yourls-db
+      YOURLS_DB_USER: yourls
+      YOURLS_DB_PASS: ${db_pwd}
+      YOURLS_DB_NAME: yourls
+      YOURLS_SITE: https://${YOURLS_DOMAIN}
+      YOURLS_USER: admin
+      YOURLS_PASS: ${pwd}
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.yourls.rule=Host(\`${YOURLS_DOMAIN}\`)"
+      - "traefik.http.routers.yourls.entrypoints=websecure"
+      - "traefik.http.routers.yourls.tls.certresolver=letsencrypt"
+      - "traefik.http.services.yourls.loadbalancer.server.port=80"
+
+volumes:
+  yourls_db:
+
+networks:
+  proxy:
+    external: true
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    show_install_result "Yourls" "https://${YOURLS_DOMAIN}" "admin" "$pwd" "🔑 Senha DB: ${db_pwd}" "$dir"
 }
 
 install_firecrawl() {
@@ -1808,8 +2584,45 @@ install_shlink() {
 }
 
 install_rustdesk() {
-    install_service "RustDesk" "rustdesk" "rustdesk/rustdesk-server:latest" "21117"
-    show_install_result "RustDesk" "https://${LAST_INSTALL_DOMAIN}" "" "" "" "$LAST_INSTALL_DIR"
+    local dir="$DOCKER_COMPOSE_DIR/rustdesk"
+    mkdir -p "$dir"
+
+    cat > "$dir/docker-compose.yml" << EOF
+version: '3.8'
+
+services:
+  rustdesk-hbbs:
+    image: rustdesk/rustdesk-server:latest
+    container_name: rustdesk-hbbs
+    restart: unless-stopped
+    command: hbbs
+    ports:
+      - "21115:21115"
+      - "21116:21116"
+      - "21116:21116/udp"
+      - "21118:21118"
+    volumes:
+      - rustdesk_data:/root
+
+  rustdesk-hbbr:
+    image: rustdesk/rustdesk-server:latest
+    container_name: rustdesk-hbbr
+    restart: unless-stopped
+    command: hbbr
+    ports:
+      - "21117:21117"
+      - "21119:21119"
+    volumes:
+      - rustdesk_data:/root
+
+volumes:
+  rustdesk_data:
+EOF
+
+    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    local server_ip
+    server_ip=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+    show_install_result "RustDesk" "" "" "" "ℹ️  Servidor relay — sem interface web\n${GREEN}║${NC}  🌐 IP do servidor: ${server_ip}\n${GREEN}║${NC}  📡 Portas: 21115-21119 (TCP+UDP)\n${GREEN}║${NC}  ⚙️  Configure no cliente: ID Server = ${server_ip}" "$dir"
 }
 
 install_hoppscotch() {
@@ -2380,7 +3193,7 @@ restore_backup() {
     
     # Subir o serviço
     if [[ -f "$target_dir/docker-compose.yml" ]]; then
-        cd "$target_dir" && docker compose up -d
+        cd "$target_dir" && docker compose up -d 2>> /opt/vemfazer/install.log
         log_success "Serviço ${tool_name} restaurado e iniciado!"
     fi
 }
@@ -2538,7 +3351,7 @@ show_manage_menu() {
     case "$action" in
         start)
             log_info "Iniciando ${name}..."
-            cd "$dir" && docker compose up -d
+            cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
             log_success "${name} iniciado!"
             ;;
         stop)
@@ -2555,7 +3368,7 @@ show_manage_menu() {
             ;;
         update)
             log_info "Atualizando ${name}..."
-            cd "$dir" && docker compose pull && docker compose up -d
+            cd "$dir" && docker compose pull && docker compose up -d 2>> /opt/vemfazer/install.log
             log_success "${name} atualizado!"
             ;;
         *)
@@ -2580,6 +3393,7 @@ show_main_menu() {
     echo -e "  ${RED}4)${NC} 🗑️  Desinstalar ferramentas"
     echo -e "  ${BLUE}5)${NC} 💾 Restaurar backup"
     echo -e "  ${WHITE}6)${NC} 🔑 Ver credenciais salvas"
+    echo -e "  ${CYAN}7)${NC} 🔄 Atualizar script"
     echo -e "  ${MAGENTA}99)${NC} Sair"
     echo ""
     read -rp "> " main_choice
@@ -2621,9 +3435,57 @@ main() {
                 choices=$(resolve_dependencies "$choices")
                 echo ""
                 
+                # Ordenar: Traefik (1) e MinIO (3) primeiro
+                local ordered_choices=""
+                local other_choices=""
+                for c in $choices; do
+                    case "$c" in
+                        1|3) ordered_choices="$ordered_choices $c" ;;
+                        *) other_choices="$other_choices $c" ;;
+                    esac
+                done
+                choices=$(echo "$ordered_choices $other_choices" | xargs)
+                
                 # Perguntar subdomínio individual de cada ferramenta
                 if ! ask_subdomains "$choices"; then
                     continue
+                fi
+                
+                # Resumo pré-instalação com dependências
+                echo ""
+                echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════╗${NC}"
+                echo -e "${BOLD}║  📋 RESUMO PRÉ-INSTALAÇÃO                                     ║${NC}"
+                echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+                for c in $choices; do
+                    local t_name="${TOOL_NAME_MAP[$c]:-Ferramenta $c}"
+                    local t_sub="${TOOL_DEFAULT_SUBDOMAIN[$c]:-}"
+                    local t_domain="${TOOL_DOMAINS[$t_sub]:-portas diretas}"
+                    local t_deps="${TOOL_DEPS[$c]:-}"
+                    local dep_text=""
+                    if [[ -n "$t_deps" ]]; then
+                        for d in $t_deps; do
+                            dep_text="${dep_text}${TOOL_NAME_MAP[$d]:-$d}, "
+                        done
+                        dep_text=" (dep: ${dep_text%, })"
+                    fi
+                    printf "${BOLD}║${NC}  %-3s %-22s → %-20s${YELLOW}%s${NC}\n" "$c" "$t_name" "$t_domain" "$dep_text"
+                done
+                echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════╣${NC}"
+                printf "${BOLD}║${NC}  Total: ${CYAN}%d${NC} ferramenta(s)\n" $(echo $choices | wc -w)
+                echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════╝${NC}"
+                echo ""
+                read -rp "$(echo -e ${YELLOW}'Confirmar instalação? [S/n]: '${NC})" confirm_install
+                if [[ "${confirm_install,,}" == "n" ]]; then
+                    log_info "Instalação cancelada."
+                    continue
+                fi
+                
+                # Criar diretório de logs
+                mkdir -p /opt/vemfazer
+                
+                # Verificar portas antes de instalar Traefik
+                if echo " $choices " | grep -q " 1 "; then
+                    check_ports
                 fi
                 
                 # Instalar Traefik primeiro se selecionado ou necessário
@@ -2640,11 +3502,26 @@ main() {
                 log_info "Iniciando instalação das ferramentas selecionadas..."
                 echo ""
                 
+                # Contar total para progresso
+                local total_items=0
+                local current_item=0
+                for choice in $choices; do
+                    [[ "$choice" == "1" ]] && continue
+                    total_items=$((total_items + 1))
+                done
+                
+                set +e  # Não abortar se uma instalação falhar
                 for choice in $choices; do
                     [[ "$choice" == "1" ]] && continue  # Traefik já tratado acima
-                    run_install "$choice"
+                    current_item=$((current_item + 1))
+                    local tool_name="${TOOL_NAME_MAP[$choice]:-Ferramenta $choice}"
+                    echo -e "${BOLD}[${current_item}/${total_items}] Instalando ${tool_name}...${NC}"
+                    if ! run_install "$choice"; then
+                        log_error "Falha ao instalar ${tool_name}. Continuando com as próximas..."
+                    fi
                     echo ""
                 done
+                set -uo pipefail
                 
                 echo ""
                 echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
@@ -2702,6 +3579,34 @@ main() {
                 else
                     echo -e "${YELLOW}⚠️  Nenhuma credencial salva ainda. Instale ferramentas primeiro.${NC}"
                 fi
+                echo ""
+                read -rp "$(echo -e ${CYAN}'Pressione ENTER para continuar...'${NC})" _
+                ;;
+            7)
+                echo ""
+                log_info "Verificando atualizações do script..."
+                local tmp_script="/tmp/setup-vemfazer-update.sh"
+                if curl -fsSL "https://raw.githubusercontent.com/canfrfrfr/setup-vemfazer/main/setup-vemfazer.sh" -o "$tmp_script" 2>/dev/null; then
+                    local remote_version
+                    remote_version=$(grep '^VERSION=' "$tmp_script" | head -1 | cut -d'"' -f2)
+                    if [[ -n "$remote_version" ]] && [[ "$remote_version" != "$VERSION" ]]; then
+                        echo -e "  Versão atual: ${YELLOW}${VERSION}${NC}"
+                        echo -e "  Versão nova:  ${GREEN}${remote_version}${NC}"
+                        read -rp "$(echo -e ${CYAN}'Atualizar agora? [S/n]: '${NC})" update_confirm
+                        if [[ "${update_confirm,,}" != "n" ]]; then
+                            cp "$tmp_script" "$0"
+                            chmod +x "$0"
+                            log_success "Script atualizado para v${remote_version}!"
+                            log_info "Reiniciando script..."
+                            exec bash "$0"
+                        fi
+                    else
+                        log_success "Você já está na versão mais recente (${VERSION})!"
+                    fi
+                else
+                    log_error "Não foi possível baixar a atualização. Verifique sua conexão."
+                fi
+                rm -f "$tmp_script"
                 echo ""
                 read -rp "$(echo -e ${CYAN}'Pressione ENTER para continuar...'${NC})" _
                 ;;
