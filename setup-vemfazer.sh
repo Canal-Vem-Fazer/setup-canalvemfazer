@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 ################################################################################
@@ -568,7 +567,6 @@ check_service_status() {
             exited|dead) icon="${RED}❌ exited${NC}" ;;
             *) icon="${YELLOW}⚠️  ${state}${NC}" ;;
         esac
-        echo -e "     %-25s %b" "$name" "$icon"
         printf "     %-25s %b\n" "$name" "$icon"
     done <<< "$ps_output"
 }
@@ -689,7 +687,7 @@ services:
     image: traefik:v3.1
     container_name: traefik
     restart: unless-stopped
-     command:
+    command:
       - "--api.dashboard=true"
       - "--api.insecure=true"
       - "--providers.docker=true"
@@ -737,6 +735,11 @@ install_service() {
     local extra_env="${5:-}"
     local extra_volumes="${6:-}"
     local extra_config="${7:-}"
+    
+    # Converter \n literal em quebras de linha reais
+    extra_env=$(echo -e "$extra_env")
+    extra_volumes=$(echo -e "$extra_volumes")
+    extra_config=$(echo -e "$extra_config")
     
     local full_domain="${TOOL_DOMAINS[$subdomain]:-$subdomain.exemplo.com}"
     
@@ -3364,10 +3367,21 @@ show_manage_menu() {
     fi
     
     if [[ "$action" == "0" ]]; then
-        read -rp "DESINSTALAR TODAS as ferramentas? (s/N): " conf
-        if [[ "$conf" =~ ^[sS]$ ]]; then
-            uninstall_all
+        echo ""
+        echo -e "${RED}⚠️  ATENÇÃO: Isso vai remover TODAS as ferramentas e seus dados!${NC}"
+        read -rp "$(echo -e ${RED}'Tem certeza? Digite SIM para confirmar: '${NC})" conf
+        if [[ "$conf" == "SIM" ]]; then
+            for num in $(seq 1 81); do
+                local sub="${TOOL_SUBDOMAIN_MAP[$num]}"
+                local d="$DOCKER_COMPOSE_DIR/${sub}"
+                [[ -d "$d" ]] && uninstall_service "$num"
+            done
+            log_success "Todas as ferramentas foram desinstaladas!"
+        else
+            log_info "Desinstalação cancelada."
         fi
+        echo ""
+        read -rp "$(echo -e ${CYAN}'Pressione ENTER para continuar...'${NC})" _
         show_manage_menu
         return
     fi
@@ -3414,7 +3428,7 @@ show_manage_menu() {
         uninstall)
             read -rp "Confirmar desinstalacao de ${name}? (s/N): " conf
             if [[ "$conf" =~ ^[sS]$ ]]; then
-                uninstall_tool "$target_num"
+                uninstall_service "$target_num"
             fi
             ;;
         *)
