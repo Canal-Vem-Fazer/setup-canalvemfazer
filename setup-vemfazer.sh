@@ -234,6 +234,24 @@ install_docker_compose() {
     log_success "Docker Compose instalado com sucesso!"
 }
 
+init_swarm() {
+    if docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null | grep -q "active"; then
+        log_success "Docker Swarm já está ativo"
+    else
+        log_info "Inicializando Docker Swarm..."
+        docker swarm init --advertise-addr "$SERVER_IP" 2>/dev/null || docker swarm init 2>/dev/null
+        log_success "Docker Swarm inicializado!"
+    fi
+    
+    if ! docker network ls --format '{{.Name}}' | grep -q "^proxy$"; then
+        log_info "Criando rede overlay 'proxy'..."
+        docker network create --driver overlay --attachable proxy
+        log_success "Rede overlay 'proxy' criada!"
+    else
+        log_success "Rede overlay 'proxy' já existe"
+    fi
+}
+
 # ======================== CONFIGURAÇÃO INICIAL ========================
 
 setup_initial() {
@@ -540,8 +558,8 @@ generate_password() {
 
 check_service_status() {
     local dir="$1"
-    local containers=()
-    local statuses=()
+    local stack_name
+    stack_name=$(basename "$dir")
     
     if [[ ! -f "$dir/docker-compose.yml" ]]; then
         return
@@ -551,7 +569,7 @@ check_service_status() {
     sleep 3
     
     local ps_output
-    ps_output=$(cd "$dir" && docker compose ps --format "{{.Name}}|{{.State}}" 2>/dev/null || true)
+    ps_output=$(docker stack ps "$stack_name" --format "{{.Name}}|{{.CurrentState}}" --no-trunc 2>/dev/null || true)
     
     if [[ -z "$ps_output" ]]; then
         echo -e "  ${YELLOW}⚠️  Não foi possível verificar os containers${NC}"
@@ -561,12 +579,15 @@ check_service_status() {
     while IFS='|' read -r name state; do
         [[ -z "$name" ]] && continue
         local icon
-        case "$state" in
-            running) icon="${GREEN}✅ running${NC}" ;;
-            restarting) icon="${YELLOW}🔄 restarting${NC}" ;;
-            exited|dead) icon="${RED}❌ exited${NC}" ;;
-            *) icon="${YELLOW}⚠️  ${state}${NC}" ;;
-        esac
+        if echo "$state" | grep -qi "running"; then
+            icon="${GREEN}✅ running${NC}"
+        elif echo "$state" | grep -qi "starting\|preparing"; then
+            icon="${YELLOW}🔄 starting${NC}"
+        elif echo "$state" | grep -qi "failed\|rejected\|shutdown"; then
+            icon="${RED}❌ failed${NC}"
+        else
+            icon="${YELLOW}⚠️  ${state}${NC}"
+        fi
         printf "     %-25s %b\n" "$name" "$icon"
     done <<< "$ps_output"
 }
@@ -608,12 +629,12 @@ show_install_result() {
         
         local has_restarting=false
         local ps_output
-        ps_output=$(cd "$compose_dir" && docker compose ps --format "{{.Name}}|{{.State}}" 2>/dev/null || true)
+        ps_output=$(docker stack ps "$(basename "$compose_dir")" --format "{{.Name}}|{{.CurrentState}}" --no-trunc 2>/dev/null || true)
         
         if [[ -n "$ps_output" ]]; then
             while IFS='|' read -r cname cstate; do
                 [[ -z "$cname" ]] && continue
-                if [[ "$cstate" == "restarting" ]]; then
+                if echo "$cstate" | grep -qi "starting\|preparing"; then
                     has_restarting=true
                 fi
             done <<< "$ps_output"
@@ -621,18 +642,21 @@ show_install_result() {
             if [[ "$has_restarting" == true ]]; then
                 echo "     ⏳ Aguardando containers estabilizarem..."
                 sleep 10
-                ps_output=$(cd "$compose_dir" && docker compose ps --format "{{.Name}}|{{.State}}" 2>/dev/null || true)
+                ps_output=$(docker stack ps "$(basename "$compose_dir")" --format "{{.Name}}|{{.CurrentState}}" --no-trunc 2>/dev/null || true)
             fi
             
             while IFS='|' read -r cname cstate; do
                 [[ -z "$cname" ]] && continue
                 local icon
-                case "$cstate" in
-                    running) icon="✅ running" ;;
-                    restarting) icon="🔄 restarting" ;;
-                    exited|dead) icon="❌ exited" ;;
-                    *) icon="⚠️  ${cstate}" ;;
-                esac
+                if echo "$cstate" | grep -qi "running"; then
+                    icon="✅ running"
+                elif echo "$cstate" | grep -qi "starting\|preparing"; then
+                    icon="🔄 starting"
+                elif echo "$cstate" | grep -qi "failed\|rejected\|shutdown"; then
+                    icon="❌ failed"
+                else
+                    icon="⚠️  ${cstate}"
+                fi
                 printf "     %-20s %s\n" "$cname" "$icon"
             done <<< "$ps_output"
         fi
@@ -666,17 +690,17 @@ install_traefik() {
     touch "$dir/letsencrypt/acme.json"
     chmod 600 "$dir/letsencrypt/acme.json"
     
-    docker network create proxy 2>/dev/null || true
+    docker network create --driver overlay --attachable proxy 2>/dev/null || true
     
     local dashboard_labels=""
     if [[ -n "$traefik_domain" ]]; then
-        dashboard_labels="    labels:
-      - \"traefik.enable=true\"
-      - \"traefik.http.routers.traefik.rule=Host(\`${traefik_domain}\`)\"
-      - \"traefik.http.routers.traefik.entrypoints=websecure\"
-      - \"traefik.http.routers.traefik.tls.certresolver=letsencrypt\"
-      - \"traefik.http.services.traefik.loadbalancer.server.port=8080\"
-      - \"traefik.http.routers.traefik.service=api@internal\""
+        dashboard_labels="      labels:
+        - \"traefik.enable=true\"
+        - \"traefik.http.routers.traefik.rule=Host(\`${traefik_domain}\`)\"
+        - \"traefik.http.routers.traefik.entrypoints=websecure\"
+        - \"traefik.http.routers.traefik.tls.certresolver=letsencrypt\"
+        - \"traefik.http.services.traefik.loadbalancer.server.port=8080\"
+        - \"traefik.http.routers.traefik.service=api@internal\""
     fi
     
     cat > "$dir/docker-compose.yml" << EOF
@@ -685,13 +709,14 @@ version: '3.8'
 services:
   traefik:
     image: traefik:v3.1
-    container_name: traefik
-    restart: unless-stopped
+    hostname: traefik
     command:
       - "--api.dashboard=true"
       - "--api.insecure=true"
       - "--providers.docker=true"
+      - "--providers.docker.swarmMode=true"
       - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=proxy"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
@@ -699,7 +724,6 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.email=${EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-      # - "--log.level=DEBUG"
     ports:
       - "80:80"
       - "443:443"
@@ -709,6 +733,16 @@ services:
       - ./letsencrypt:/letsencrypt
     networks:
       - proxy
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      placement:
+        constraints:
+          - node.role == manager
 ${dashboard_labels}
 
 networks:
@@ -716,7 +750,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml traefik 2>> /opt/vemfazer/install.log
     TRAEFIK_INSTALLED=true
     local traefik_url=""
     if [[ -n "$traefik_domain" ]]; then
@@ -766,26 +800,45 @@ version: '3.8'
 services:
   ${subdomain}:
     image: ${image}
-    container_name: ${subdomain}
-    restart: unless-stopped
+    hostname: ${subdomain}
 ${env_section}
 ${volumes_section}
 ${extra_config}
     networks:
       - proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.${subdomain}.rule=Host(\`${full_domain}\`)"
-      - "traefik.http.routers.${subdomain}.entrypoints=websecure"
-      - "traefik.http.routers.${subdomain}.tls.certresolver=letsencrypt"
-      - "traefik.http.services.${subdomain}.loadbalancer.server.port=${port}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${port}/ >/dev/null 2>&1 || curl -fsS http://localhost:${port}/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.${subdomain}.rule=Host(\`${full_domain}\`)"
+        - "traefik.http.routers.${subdomain}.entrypoints=websecure"
+        - "traefik.http.routers.${subdomain}.tls.certresolver=letsencrypt"
+        - "traefik.http.services.${subdomain}.loadbalancer.server.port=${port}"
 
 networks:
   proxy:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$subdomain" 2>> /opt/vemfazer/install.log
     # Retornar diretório e domínio para funções que chamam install_service
     LAST_INSTALL_DIR="$dir"
     LAST_INSTALL_DOMAIN="$full_domain"
@@ -815,8 +868,7 @@ version: '3.8'
 services:
   minio:
     image: minio/minio:latest
-    container_name: minio
-    restart: unless-stopped
+    hostname: minio
     command: server /data --console-address ':9001'
     environment:
       MINIO_ROOT_USER: admin
@@ -825,7 +877,14 @@ services:
       - minio_data:/data
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.minio-console.rule=Host(\`${MINIO_CONSOLE_DOMAIN}\`)"
       - "traefik.http.routers.minio-console.entrypoints=websecure"
@@ -846,7 +905,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "MinIO" "https://${MINIO_CONSOLE_DOMAIN}" "admin" "$pwd" "📡 API S3: https://${MINIO_API_DOMAIN}" "$dir"
 }
 
@@ -906,8 +965,7 @@ version: '3.8'
 services:
   chatwoot-db:
     image: postgres:15
-    container_name: chatwoot-db
-    restart: unless-stopped
+    hostname: chatwoot-db
     environment:
       POSTGRES_DB: chatwoot
       POSTGRES_USER: chatwoot
@@ -916,18 +974,42 @@ services:
       - chatwoot_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatwoot || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   chatwoot-redis:
     image: redis:7-alpine
-    container_name: chatwoot-redis
-    restart: unless-stopped
+    hostname: chatwoot-redis
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   chatwoot:
     image: chatwoot/chatwoot:latest
-    container_name: chatwoot
-    restart: unless-stopped
+    hostname: chatwoot
     depends_on:
       - chatwoot-db
       - chatwoot-redis
@@ -942,7 +1024,14 @@ services:
     command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.chatwoot.rule=Host(\`${CHATWOOT_DOMAIN}\`)"
       - "traefik.http.routers.chatwoot.entrypoints=websecure"
@@ -951,8 +1040,7 @@ services:
 
   chatwoot-sidekiq:
     image: chatwoot/chatwoot:latest
-    container_name: chatwoot-sidekiq
-    restart: unless-stopped
+    hostname: chatwoot-sidekiq
     depends_on:
       - chatwoot-db
       - chatwoot-redis
@@ -975,7 +1063,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Chatwoot" "https://${CHATWOOT_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${secret}\n  ✔ Sidekiq (worker) incluído" "$dir"
 }
 
@@ -1013,8 +1101,7 @@ version: '3.8'
 services:
   typebot-db:
     image: postgres:15
-    container_name: typebot-db
-    restart: unless-stopped
+    hostname: typebot-db
     environment:
       POSTGRES_DB: typebot
       POSTGRES_USER: typebot
@@ -1023,11 +1110,23 @@ services:
       - typebot_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U typebot || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   typebot-builder:
     image: baptistearno/typebot-builder:latest
-    container_name: typebot-builder
-    restart: unless-stopped
+    hostname: typebot-builder
     depends_on:
       - typebot-db
     environment:
@@ -1042,7 +1141,14 @@ services:
       S3_ENDPOINT: https://${MINIO_API_DOMAIN}
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.typebot.rule=Host(\`${TYPEBOT_BUILDER_DOMAIN}\`)"
       - "traefik.http.routers.typebot.entrypoints=websecure"
@@ -1051,8 +1157,7 @@ services:
 
   typebot-viewer:
     image: baptistearno/typebot-viewer:latest
-    container_name: typebot-viewer
-    restart: unless-stopped
+    hostname: typebot-viewer
     depends_on:
       - typebot-db
     environment:
@@ -1066,7 +1171,14 @@ services:
       S3_ENDPOINT: https://${MINIO_API_DOMAIN}
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.typebot-viewer.rule=Host(\`${TYPEBOT_VIEWER_DOMAIN}\`)"
       - "traefik.http.routers.typebot-viewer.entrypoints=websecure"
@@ -1081,7 +1193,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Typebot" "https://${TYPEBOT_BUILDER_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${secret}\n  🌐 Viewer: https://${TYPEBOT_VIEWER_DOMAIN}" "$dir"
 }
 
@@ -1098,8 +1210,7 @@ version: '3.8'
 services:
   mautic-db:
     image: mariadb:10.11
-    container_name: mautic-db
-    restart: unless-stopped
+    hostname: mautic-db
     environment:
       MYSQL_ROOT_PASSWORD: ${pwd}
       MYSQL_DATABASE: mautic
@@ -1109,11 +1220,23 @@ services:
       - mautic_db:/var/lib/mysql
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   mautic:
     image: mautic/mautic:latest
-    container_name: mautic
-    restart: unless-stopped
+    hostname: mautic
     depends_on:
       - mautic-db
     environment:
@@ -1125,7 +1248,14 @@ services:
       - mautic_data:/var/www/html
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.mautic.rule=Host(\`${MAUTIC_DOMAIN}\`)"
       - "traefik.http.routers.mautic.entrypoints=websecure"
@@ -1141,7 +1271,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Mautic" "https://${MAUTIC_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -1173,7 +1303,7 @@ install_dify() {
             echo -e "\nnetworks:\n  proxy:\n    external: true" >> docker-compose.yml
         fi
     fi
-    docker compose up -d 2>> /opt/vemfazer/install.log
+    docker stack deploy -c docker-compose.yml "$(basename "$(pwd)")" 2>> /opt/vemfazer/install.log
     show_install_result "Dify AI" "https://${DIFY_DOMAIN}" "(criar no primeiro acesso)" "" "" "$dir"
 }
 
@@ -1201,8 +1331,7 @@ version: '3.8'
 services:
   langfuse-db:
     image: postgres:15
-    container_name: langfuse-db
-    restart: unless-stopped
+    hostname: langfuse-db
     environment:
       POSTGRES_DB: langfuse
       POSTGRES_USER: langfuse
@@ -1211,11 +1340,23 @@ services:
       - langfuse_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   langfuse:
     image: langfuse/langfuse:latest
-    container_name: langfuse
-    restart: unless-stopped
+    hostname: langfuse
     depends_on:
       - langfuse-db
     environment:
@@ -1225,7 +1366,14 @@ services:
       SALT: $(generate_password 16)
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.langfuse.rule=Host(\`${LANGFUSE_DOMAIN}\`)"
       - "traefik.http.routers.langfuse.entrypoints=websecure"
@@ -1240,7 +1388,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Langfuse" "https://${LANGFUSE_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -1290,8 +1438,7 @@ version: '3.8'
 services:
   twentycrm-db:
     image: postgres:15
-    container_name: twentycrm-db
-    restart: unless-stopped
+    hostname: twentycrm-db
     environment:
       POSTGRES_DB: twenty
       POSTGRES_USER: twenty
@@ -1300,11 +1447,23 @@ services:
       - twentycrm_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U twenty || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   twentycrm:
     image: twentycrm/twenty:latest
-    container_name: twentycrm
-    restart: unless-stopped
+    hostname: twentycrm
     depends_on:
       - twentycrm-db
     environment:
@@ -1317,7 +1476,14 @@ services:
       FILE_TOKEN_SECRET: $(generate_password 32)
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.twentycrm.rule=Host(\`${TWENTY_DOMAIN}\`)"
       - "traefik.http.routers.twentycrm.entrypoints=websecure"
@@ -1332,7 +1498,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "TwentyCRM" "https://${TWENTY_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -1377,8 +1543,7 @@ version: '3.8'
 services:
   glpi-db:
     image: mariadb:10.11
-    container_name: glpi-db
-    restart: unless-stopped
+    hostname: glpi-db
     environment:
       MYSQL_ROOT_PASSWORD: ${pwd}
       MYSQL_DATABASE: glpi
@@ -1388,11 +1553,23 @@ services:
       - glpi_db:/var/lib/mysql
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   glpi:
     image: diouxx/glpi:latest
-    container_name: glpi
-    restart: unless-stopped
+    hostname: glpi
     depends_on:
       - glpi-db
     environment:
@@ -1401,7 +1578,14 @@ services:
       - glpi_data:/var/www/html/glpi
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.glpi.rule=Host(\`${GLPI_DOMAIN}\`)"
       - "traefik.http.routers.glpi.entrypoints=websecure"
@@ -1417,7 +1601,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "GLPI" "https://${GLPI_DOMAIN}" "glpi" "glpi (alterar no primeiro acesso)" "🔑 Senha DB: ${pwd}\n  ℹ️  Outros logins padrão: tech/tech, normal/normal, post-only/postonly" "$dir"
 }
 
@@ -1467,7 +1651,7 @@ install_supabase() {
             echo -e "\nnetworks:\n  proxy:\n    external: true" >> "$compose_file"
         fi
     fi
-    cd "$dir/docker" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir/docker" && docker stack deploy -c docker-compose.yml "$(basename "$(pwd)")" 2>> /opt/vemfazer/install.log
     show_install_result "Supabase" "https://${SUPABASE_DOMAIN}" "(criar no primeiro acesso)" "" "" "$dir/docker"
 }
 
@@ -1503,8 +1687,7 @@ version: '3.8'
 services:
   nocobase-db:
     image: postgres:15
-    container_name: nocobase-db
-    restart: unless-stopped
+    hostname: nocobase-db
     environment:
       POSTGRES_DB: nocobase
       POSTGRES_USER: nocobase
@@ -1513,11 +1696,23 @@ services:
       - nocobase_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nocobase || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   nocobase:
     image: nocobase/nocobase:latest
-    container_name: nocobase
-    restart: unless-stopped
+    hostname: nocobase
     depends_on:
       - nocobase-db
     environment:
@@ -1529,7 +1724,14 @@ services:
       DB_PASSWORD: ${pwd}
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.nocobase.rule=Host(\`${NOCOBASE_DOMAIN}\`)"
       - "traefik.http.routers.nocobase.entrypoints=websecure"
@@ -1544,7 +1746,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Nocobase" "https://${NOCOBASE_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -1577,8 +1779,7 @@ version: '3.8'
 services:
   wordpress-db:
     image: mariadb:10.11
-    container_name: wordpress-db
-    restart: unless-stopped
+    hostname: wordpress-db
     environment:
       MYSQL_ROOT_PASSWORD: ${pwd}
       MYSQL_DATABASE: wordpress
@@ -1588,11 +1789,23 @@ services:
       - wp_db:/var/lib/mysql
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   wordpress:
     image: wordpress:latest
-    container_name: wordpress
-    restart: unless-stopped
+    hostname: wordpress
     depends_on:
       - wordpress-db
     environment:
@@ -1604,7 +1817,14 @@ services:
       - wp_data:/var/www/html
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.wordpress.rule=Host(\`${WORDPRESS_DOMAIN}\`)"
       - "traefik.http.routers.wordpress.entrypoints=websecure"
@@ -1620,7 +1840,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "WordPress" "https://${WORDPRESS_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -1639,8 +1859,7 @@ version: '3.8'
 services:
   directus-db:
     image: postgres:15
-    container_name: directus-db
-    restart: unless-stopped
+    hostname: directus-db
     environment:
       POSTGRES_DB: directus
       POSTGRES_USER: directus
@@ -1649,11 +1868,23 @@ services:
       - directus_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U directus || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   directus:
     image: directus/directus:latest
-    container_name: directus
-    restart: unless-stopped
+    hostname: directus
     depends_on:
       - directus-db
     environment:
@@ -1671,7 +1902,14 @@ services:
       - directus_uploads:/directus/uploads
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.directus.rule=Host(\`${DIRECTUS_DOMAIN}\`)"
       - "traefik.http.routers.directus.entrypoints=websecure"
@@ -1687,7 +1925,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Directus" "https://${DIRECTUS_DOMAIN}" "$EMAIL" "$pwd" "🔑 Senha DB: ${db_pwd}" "$dir"
 }
 
@@ -1704,8 +1942,7 @@ version: '3.8'
 services:
   strapi-db:
     image: postgres:15
-    container_name: strapi-db
-    restart: unless-stopped
+    hostname: strapi-db
     environment:
       POSTGRES_DB: strapi
       POSTGRES_USER: strapi
@@ -1714,11 +1951,23 @@ services:
       - strapi_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U strapi || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   strapi:
     image: strapi/strapi:latest
-    container_name: strapi
-    restart: unless-stopped
+    hostname: strapi
     depends_on:
       - strapi-db
     environment:
@@ -1732,7 +1981,14 @@ services:
       - strapi_data:/srv/app
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.strapi.rule=Host(\`${STRAPI_DOMAIN}\`)"
       - "traefik.http.routers.strapi.entrypoints=websecure"
@@ -1748,7 +2004,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Strapi" "https://${STRAPI_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -1774,8 +2030,7 @@ version: '3.8'
 services:
   wikijs-db:
     image: postgres:15
-    container_name: wikijs-db
-    restart: unless-stopped
+    hostname: wikijs-db
     environment:
       POSTGRES_DB: wikijs
       POSTGRES_USER: wikijs
@@ -1784,11 +2039,23 @@ services:
       - wikijs_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wikijs || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   wikijs:
     image: ghcr.io/requarks/wiki:2
-    container_name: wikijs
-    restart: unless-stopped
+    hostname: wikijs
     depends_on:
       - wikijs-db
     environment:
@@ -1800,7 +2067,14 @@ services:
       DB_NAME: wikijs
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.wikijs.rule=Host(\`${WIKIJS_DOMAIN}\`)"
       - "traefik.http.routers.wikijs.entrypoints=websecure"
@@ -1815,7 +2089,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Wiki.js" "https://${WIKIJS_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -1832,8 +2106,7 @@ version: '3.8'
 services:
   humhub-db:
     image: mariadb:10.11
-    container_name: humhub-db
-    restart: unless-stopped
+    hostname: humhub-db
     environment:
       MYSQL_ROOT_PASSWORD: ${pwd}
       MYSQL_DATABASE: humhub
@@ -1843,11 +2116,23 @@ services:
       - humhub_db:/var/lib/mysql
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   humhub:
     image: mriedmann/humhub:latest
-    container_name: humhub
-    restart: unless-stopped
+    hostname: humhub
     depends_on:
       - humhub-db
     environment:
@@ -1860,7 +2145,14 @@ services:
       - humhub_uploads:/var/www/localhost/htdocs/uploads
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.humhub.rule=Host(\`${HUMHUB_DOMAIN}\`)"
       - "traefik.http.routers.humhub.entrypoints=websecure"
@@ -1877,7 +2169,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "HumHub" "https://${HUMHUB_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -1898,8 +2190,7 @@ version: '3.8'
 services:
   outline-db:
     image: postgres:15
-    container_name: outline-db
-    restart: unless-stopped
+    hostname: outline-db
     environment:
       POSTGRES_DB: outline
       POSTGRES_USER: outline
@@ -1908,18 +2199,42 @@ services:
       - outline_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U outline || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   outline-redis:
     image: redis:7-alpine
-    container_name: outline-redis
-    restart: unless-stopped
+    hostname: outline-redis
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   outline:
     image: outlinewiki/outline:latest
-    container_name: outline
-    restart: unless-stopped
+    hostname: outline
     depends_on:
       - outline-db
       - outline-redis
@@ -1932,7 +2247,14 @@ services:
       FORCE_HTTPS: false
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.outline.rule=Host(\`${OUTLINE_DOMAIN}\`)"
       - "traefik.http.routers.outline.entrypoints=websecure"
@@ -1947,7 +2269,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Outline" "https://${OUTLINE_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -1991,8 +2313,7 @@ version: '3.8'
 services:
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    restart: unless-stopped
+    hostname: cadvisor
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -2000,7 +2321,14 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.cadvisor.rule=Host(\`${CADVISOR_DOMAIN}\`)"
       - "traefik.http.routers.cadvisor.entrypoints=websecure"
@@ -2012,7 +2340,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "cAdvisor" "https://${CADVISOR_DOMAIN}" "" "" "" "$dir"
 }
 
@@ -2035,8 +2363,7 @@ version: '3.8'
 services:
   calcom-db:
     image: postgres:15
-    container_name: calcom-db
-    restart: unless-stopped
+    hostname: calcom-db
     environment:
       POSTGRES_DB: calcom
       POSTGRES_USER: calcom
@@ -2045,11 +2372,23 @@ services:
       - calcom_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calcom || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   calcom:
     image: calcom/cal.com:latest
-    container_name: calcom
-    restart: unless-stopped
+    hostname: calcom
     depends_on:
       - calcom-db
     environment:
@@ -2059,7 +2398,14 @@ services:
       CALENDSO_ENCRYPTION_KEY: $(generate_password 32)
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.calcom.rule=Host(\`${CALCOM_DOMAIN}\`)"
       - "traefik.http.routers.calcom.entrypoints=websecure"
@@ -2074,7 +2420,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Cal.com" "https://${CALCOM_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -2129,8 +2475,7 @@ version: '3.8'
 services:
   appointments-db:
     image: mariadb:10.11
-    container_name: appointments-db
-    restart: unless-stopped
+    hostname: appointments-db
     environment:
       MYSQL_ROOT_PASSWORD: ${pwd}
       MYSQL_DATABASE: easyappointments
@@ -2140,11 +2485,23 @@ services:
       - appointments_db:/var/lib/mysql
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   appointments:
     image: alextselegidis/easyappointments:latest
-    container_name: appointments
-    restart: unless-stopped
+    hostname: appointments
     depends_on:
       - appointments-db
     environment:
@@ -2155,7 +2512,14 @@ services:
       DB_PASSWORD: ${pwd}
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.appointments.rule=Host(\`${EA_DOMAIN}\`)"
       - "traefik.http.routers.appointments.entrypoints=websecure"
@@ -2170,7 +2534,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Easy!Appointments" "https://${EA_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -2197,8 +2561,7 @@ version: '3.8'
 services:
   mattermost-db:
     image: postgres:15
-    container_name: mattermost-db
-    restart: unless-stopped
+    hostname: mattermost-db
     environment:
       POSTGRES_DB: mattermost
       POSTGRES_USER: mattermost
@@ -2207,11 +2570,23 @@ services:
       - mm_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mattermost || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   mattermost:
     image: mattermost/mattermost-team-edition:latest
-    container_name: mattermost
-    restart: unless-stopped
+    hostname: mattermost
     depends_on:
       - mattermost-db
     environment:
@@ -2225,7 +2600,14 @@ services:
       - mm_plugins:/mattermost/plugins
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.mattermost.rule=Host(\`${MM_DOMAIN}\`)"
       - "traefik.http.routers.mattermost.entrypoints=websecure"
@@ -2244,7 +2626,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Mattermost" "https://${MM_DOMAIN}" "(criar no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -2261,8 +2643,7 @@ version: '3.8'
 services:
   odoo-db:
     image: postgres:15
-    container_name: odoo-db
-    restart: unless-stopped
+    hostname: odoo-db
     environment:
       POSTGRES_DB: odoo
       POSTGRES_USER: odoo
@@ -2271,11 +2652,23 @@ services:
       - odoo_db:/var/lib/postgresql/data
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   odoo:
     image: odoo:17
-    container_name: odoo
-    restart: unless-stopped
+    hostname: odoo
     depends_on:
       - odoo-db
     environment:
@@ -2287,7 +2680,14 @@ services:
       - odoo_addons:/mnt/extra-addons
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.odoo.rule=Host(\`${ODOO_DOMAIN}\`)"
       - "traefik.http.routers.odoo.entrypoints=websecure"
@@ -2304,7 +2704,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Odoo" "https://${ODOO_DOMAIN}" "admin (definir no primeiro acesso)" "" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -2321,8 +2721,7 @@ version: '3.8'
 services:
   frappe-db:
     image: mariadb:10.11
-    container_name: frappe-db
-    restart: unless-stopped
+    hostname: frappe-db
     environment:
       MYSQL_ROOT_PASSWORD: ${pwd}
       MYSQL_DATABASE: frappe
@@ -2333,18 +2732,42 @@ services:
       - frappe_db:/var/lib/mysql
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   frappe-redis:
     image: redis:7-alpine
-    container_name: frappe-redis
-    restart: unless-stopped
+    hostname: frappe-redis
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   frappe:
     image: frappe/erpnext:latest
-    container_name: frappe
-    restart: unless-stopped
+    hostname: frappe
     depends_on:
       - frappe-db
       - frappe-redis
@@ -2362,7 +2785,14 @@ services:
       - frappe_logs:/home/frappe/frappe-bench/logs
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frappe.rule=Host(\`${FRAPPE_DOMAIN}\`)"
       - "traefik.http.routers.frappe.entrypoints=websecure"
@@ -2379,7 +2809,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Frappe/ERPNext" "https://${FRAPPE_DOMAIN}" "Administrator" "$pwd" "🔑 Senha DB: ${pwd}" "$dir"
 }
 
@@ -2413,8 +2843,7 @@ version: '3.8'
 services:
   passbolt-db:
     image: mariadb:10.11
-    container_name: passbolt-db
-    restart: unless-stopped
+    hostname: passbolt-db
     environment:
       MYSQL_ROOT_PASSWORD: ${pwd}
       MYSQL_DATABASE: passbolt
@@ -2424,11 +2853,23 @@ services:
       - passbolt_db:/var/lib/mysql
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   passbolt:
     image: passbolt/passbolt:latest-ce
-    container_name: passbolt
-    restart: unless-stopped
+    hostname: passbolt
     depends_on:
       - passbolt-db
     environment:
@@ -2439,7 +2880,14 @@ services:
       DATASOURCES_DEFAULT_DATABASE: passbolt
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.passbolt.rule=Host(\`${PASSBOLT_DOMAIN}\`)"
       - "traefik.http.routers.passbolt.entrypoints=websecure"
@@ -2455,7 +2903,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Passbolt" "https://${PASSBOLT_DOMAIN}" "(criar via CLI)" "" "🔑 Senha DB: ${pwd}\n  ℹ️  Criar admin: docker exec passbolt su -m -c \"bin/cake passbolt register_user -u EMAIL -f NOME -l SOBRENOME -r admin\" -s /bin/sh www-data" "$dir"
 }
 
@@ -2480,8 +2928,7 @@ version: '3.8'
 services:
   yourls-db:
     image: mariadb:10.11
-    container_name: yourls-db
-    restart: unless-stopped
+    hostname: yourls-db
     environment:
       MYSQL_ROOT_PASSWORD: ${db_pwd}
       MYSQL_DATABASE: yourls
@@ -2491,11 +2938,23 @@ services:
       - yourls_db:/var/lib/mysql
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   yourls:
     image: yourls:latest
-    container_name: yourls
-    restart: unless-stopped
+    hostname: yourls
     depends_on:
       - yourls-db
     environment:
@@ -2508,7 +2967,14 @@ services:
       YOURLS_PASS: ${pwd}
     networks:
       - proxy
-    labels:
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      labels:
       - "traefik.enable=true"
       - "traefik.http.routers.yourls.rule=Host(\`${YOURLS_DOMAIN}\`)"
       - "traefik.http.routers.yourls.entrypoints=websecure"
@@ -2523,7 +2989,7 @@ networks:
     external: true
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
     show_install_result "Yourls" "https://${YOURLS_DOMAIN}" "admin" "$pwd" "🔑 Senha DB: ${db_pwd}" "$dir"
 }
 
@@ -2553,8 +3019,7 @@ version: '3.8'
 services:
   rustdesk-hbbs:
     image: rustdesk/rustdesk-server:latest
-    container_name: rustdesk-hbbs
-    restart: unless-stopped
+    hostname: rustdesk-hbbs
     command: hbbs
     ports:
       - "21115:21115"
@@ -2563,23 +3028,36 @@ services:
       - "21118:21118"
     volumes:
       - rustdesk_data:/root
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
   rustdesk-hbbr:
     image: rustdesk/rustdesk-server:latest
-    container_name: rustdesk-hbbr
-    restart: unless-stopped
+    hostname: rustdesk-hbbr
     command: hbbr
     ports:
       - "21117:21117"
       - "21119:21119"
     volumes:
       - rustdesk_data:/root
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 5
+        window: 120s
 
 volumes:
   rustdesk_data:
 EOF
 
-    cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+    cd "$dir" && docker stack deploy -c docker-compose.yml rustdesk 2>> /opt/vemfazer/install.log
     local server_ip
     server_ip=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
     show_install_result "RustDesk" "" "" "" "ℹ️  Servidor relay — sem interface web\n  🌐 IP do servidor: ${server_ip}\n  📡 Portas: 21115-21119 (TCP+UDP)\n  ⚙️  Configure no cliente: ID Server = ${server_ip}" "$dir"
@@ -3099,7 +3577,7 @@ backup_volumes() {
     
     # Listar volumes Docker associados ao serviço
     local volumes
-    volumes=$(cd "$dir" && docker compose config --volumes 2>/dev/null)
+    volumes=$(cd "$dir" && docker compose config --volumes 2>/dev/null || grep -E "^  [a-z]" "$dir/docker-compose.yml" | sed "s/://g" | xargs 2>/dev/null)
     
     if [[ -n "$volumes" ]]; then
         while IFS= read -r vol; do
@@ -3218,7 +3696,7 @@ restore_backup() {
     
     # Subir o serviço
     if [[ -f "$target_dir/docker-compose.yml" ]]; then
-        cd "$target_dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+        cd "$target_dir" && docker stack deploy -c docker-compose.yml "$(basename "$(pwd)")" 2>> /opt/vemfazer/install.log
         log_success "Serviço ${tool_name} restaurado e iniciado!"
     fi
 }
@@ -3243,7 +3721,10 @@ uninstall_service() {
     backup_volumes "$subdomain" "$name"
     
     log_info "Desinstalando ${name}..."
-    cd "$dir" && docker compose down -v 2>/dev/null || true
+    docker stack rm "$subdomain" 2>/dev/null || true
+    sleep 5
+    # Remover volumes associados
+    docker volume ls --format "{{.Name}}" | grep "^${subdomain}_" | xargs -r docker volume rm 2>/dev/null || true
     rm -rf "$dir"
     log_success "${name} desinstalado com sucesso!"
 }
@@ -3261,7 +3742,7 @@ list_installed() {
         
         if [[ -d "$dir" ]]; then
             local status
-            if cd "$dir" && docker compose ps --status running 2>/dev/null | grep -q "$subdomain"; then
+            if docker stack ps "$subdomain" --format "{{.CurrentState}}" 2>/dev/null | grep -qi "running"; then
                 status="${GREEN}● rodando${NC}"
             else
                 status="${RED}● parado${NC}"
@@ -3338,7 +3819,11 @@ restart_service() {
     fi
     
     log_info "Reiniciando ${name}..."
-    cd "$dir" && docker compose restart
+    local services
+    services=$(docker stack services "$subdomain" --format "{{.Name}}" 2>/dev/null)
+    for svc in $services; do
+        docker service update --force "$svc" 2>/dev/null || true
+    done
     log_success "${name} reiniciado!"
 }
 
@@ -3356,6 +3841,9 @@ show_manage_menu() {
     echo -e "  ${CYAN}logs <num>${NC}      -- Ver logs"
     echo -e "  ${CYAN}update <num>${NC}    -- Atualizar imagem"
     echo -e "  ${CYAN}status <num>${NC}    -- Ver estado dos containers"
+    echo -e "  ${CYAN}health <num>${NC}    -- Ver saude (healthcheck) dos containers"
+    echo -e "  ${CYAN}health-all${NC}      -- Resumo de saude de TODAS as stacks"
+    echo -e "  ${YELLOW}restart-unhealthy${NC} -- Reinicia todos containers unhealthy"
     echo -e "  ${RED}uninstall <num>${NC} -- Desinstalar"
     echo -e "  ${RED}0${NC}               -- Desinstalar tudo"
     echo -e "  ${GREEN}99${NC}              -- Voltar"
@@ -3363,6 +3851,120 @@ show_manage_menu() {
     read -rp "> " action target_num
     
     if [[ "$action" == "99" ]]; then
+        return
+    fi
+    
+    if [[ "$action" == "restart-unhealthy" ]]; then
+        print_banner
+        log_info "Procurando containers unhealthy em todas as stacks..."
+        echo ""
+        local found=0 restarted=0 failed=0
+        for num in $(seq 1 81); do
+            local sub="${TOOL_SUBDOMAIN_MAP[$num]:-}"
+            [[ -z "$sub" ]] && continue
+            local d="$DOCKER_COMPOSE_DIR/${sub}"
+            [[ ! -d "$d" ]] && continue
+            local svcs
+            svcs=$(docker stack services "$sub" --format "{{.Name}}" 2>/dev/null)
+            [[ -z "$svcs" ]] && continue
+            while IFS= read -r svc; do
+                [[ -z "$svc" ]] && continue
+                local cids
+                cids=$(docker ps -q --filter "label=com.docker.swarm.service.name=${svc}" 2>/dev/null)
+                [[ -z "$cids" ]] && continue
+                local svc_has_unhealthy=0
+                while IFS= read -r cid; do
+                    [[ -z "$cid" ]] && continue
+                    local chealth
+                    chealth=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null)
+                    if [[ "$chealth" == "unhealthy" ]]; then
+                        local cname
+                        cname=$(docker inspect --format '{{.Name}}' "$cid" 2>/dev/null | sed 's|^/||')
+                        echo -e "${RED}✗ unhealthy:${NC} $cname (stack: $sub, service: $svc)"
+                        found=$((found+1))
+                        svc_has_unhealthy=1
+                    fi
+                done <<< "$cids"
+                if [[ $svc_has_unhealthy -eq 1 ]]; then
+                    log_info "  → Forçando restart do service: $svc"
+                    if docker service update --force --detach=false "$svc" >/dev/null 2>> /opt/vemfazer/install.log; then
+                        log_success "  ✓ Service $svc reiniciado"
+                        restarted=$((restarted+1))
+                    else
+                        log_warn "  ✗ Falha ao reiniciar $svc"
+                        failed=$((failed+1))
+                    fi
+                fi
+            done <<< "$svcs"
+        done
+        echo ""
+        echo "--------------------------------------------------------------------------------"
+        if [[ $found -eq 0 ]]; then
+            log_success "Nenhum container unhealthy encontrado! Tudo saudável. 🎉"
+        else
+            echo -e "${BOLD}Resumo:${NC} $found unhealthy detectados | ${GREEN}${restarted} services reiniciados${NC} | ${RED}${failed} falhas${NC}"
+            log_info "Aguarde ~30s e use 'health-all' para verificar a recuperação."
+        fi
+        echo ""
+        read -rp "$(echo -e ${CYAN}'Pressione ENTER para continuar...'${NC})" _
+        show_manage_menu
+        return
+    fi
+    
+    if [[ "$action" == "health-all" ]]; then
+        print_banner
+        log_info "Resumo de saúde de todas as stacks instaladas:"
+        echo ""
+        printf "${BOLD}%-25s %-10s %-10s %-10s %-10s %-10s${NC}\n" "STACK" "SERVICOS" "RUNNING" "HEALTHY" "UNHEALTH" "OUTROS"
+        echo "--------------------------------------------------------------------------------"
+        local total_stacks=0 total_unhealthy=0
+        for num in $(seq 1 81); do
+            local sub="${TOOL_SUBDOMAIN_MAP[$num]:-}"
+            [[ -z "$sub" ]] && continue
+            local d="$DOCKER_COMPOSE_DIR/${sub}"
+            [[ ! -d "$d" ]] && continue
+            local svcs
+            svcs=$(docker stack services "$sub" --format "{{.Name}}" 2>/dev/null)
+            [[ -z "$svcs" ]] && continue
+            total_stacks=$((total_stacks+1))
+            local nsvc=0 nrun=0 nh=0 nu=0 no=0
+            while IFS= read -r svc; do
+                [[ -z "$svc" ]] && continue
+                nsvc=$((nsvc+1))
+                local cids
+                cids=$(docker ps -q --filter "label=com.docker.swarm.service.name=${svc}" 2>/dev/null)
+                if [[ -z "$cids" ]]; then
+                    no=$((no+1))
+                    continue
+                fi
+                while IFS= read -r cid; do
+                    [[ -z "$cid" ]] && continue
+                    local cstatus chealth
+                    cstatus=$(docker inspect --format '{{.State.Status}}' "$cid" 2>/dev/null)
+                    chealth=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null)
+                    [[ "$cstatus" == "running" ]] && nrun=$((nrun+1))
+                    case "$chealth" in
+                        healthy)   nh=$((nh+1)) ;;
+                        unhealthy) nu=$((nu+1)) ;;
+                        *)         no=$((no+1)) ;;
+                    esac
+                done <<< "$cids"
+            done <<< "$svcs"
+            total_unhealthy=$((total_unhealthy+nu))
+            local rowcolor="${NC}"
+            [[ $nu -gt 0 ]] && rowcolor="${RED}"
+            [[ $nu -eq 0 && $nh -gt 0 ]] && rowcolor="${GREEN}"
+            printf "${rowcolor}%-25s %-10s %-10s %-10s %-10s %-10s${NC}\n" "${sub:0:24}" "$nsvc" "$nrun" "$nh" "$nu" "$no"
+        done
+        echo "--------------------------------------------------------------------------------"
+        if [[ $total_stacks -eq 0 ]]; then
+            log_warn "Nenhuma stack instalada encontrada."
+        else
+            echo -e "${BOLD}Total:${NC} $total_stacks stacks | ${RED}Unhealthy: $total_unhealthy${NC}"
+        fi
+        echo ""
+        read -rp "$(echo -e ${CYAN}'Pressione ENTER para continuar...'${NC})" _
+        show_manage_menu
         return
     fi
     
@@ -3400,12 +4002,12 @@ show_manage_menu() {
     case "$action" in
         start)
             log_info "Iniciando ${name}..."
-            cd "$dir" && docker compose up -d 2>> /opt/vemfazer/install.log
+            cd "$dir" && docker stack deploy -c docker-compose.yml "$(basename "$dir")" 2>> /opt/vemfazer/install.log
             log_success "${name} iniciado!"
             ;;
         stop)
             log_info "Parando ${name}..."
-            cd "$dir" && docker compose down
+            docker stack rm "$subdomain" 2>/dev/null || true
             log_success "${name} parado!"
             ;;
         restart)
@@ -3413,17 +4015,67 @@ show_manage_menu() {
             ;;
         logs)
             log_info "Logs de ${name} (Ctrl+C para sair):"
-            cd "$dir" && docker compose logs -f --tail 50
+            local main_svc
+            main_svc=$(docker stack services "$subdomain" --format "{{.Name}}" 2>/dev/null | grep -E "^${subdomain}_${subdomain}$" | head -1)
+            if [[ -z "$main_svc" ]]; then
+                main_svc=$(docker stack services "$subdomain" --format "{{.Name}}" 2>/dev/null | head -1)
+            fi
+            docker service logs -f --tail 50 "$main_svc"
             ;;
         update)
             log_info "Atualizando ${name}..."
-            cd "$dir" && docker compose pull && docker compose up -d 2>> /opt/vemfazer/install.log
+            local services_to_update
+            services_to_update=$(docker stack services "$subdomain" --format "{{.Name}}|{{.Image}}" 2>/dev/null)
+            while IFS='|' read -r svc_name svc_image; do
+                [[ -z "$svc_name" ]] && continue
+                docker pull "$svc_image" 2>/dev/null || true
+                docker service update --image "$svc_image" "$svc_name" 2>> /opt/vemfazer/install.log || true
+            done <<< "$services_to_update"
             log_success "${name} atualizado!"
             ;;
         status)
             log_info "Estado dos containers de ${name}:"
             echo ""
-            cd "$dir" && docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || docker compose ps
+            docker stack ps "$subdomain" --no-trunc 2>/dev/null || echo "Stack não encontrada"
+            ;;
+        health)
+            log_info "Saúde dos containers de ${name}:"
+            echo ""
+            local svcs
+            svcs=$(docker stack services "$subdomain" --format "{{.Name}}" 2>/dev/null)
+            if [[ -z "$svcs" ]]; then
+                echo "Stack não encontrada ou sem serviços ativos."
+            else
+                printf "${BOLD}%-45s %-12s %-10s %s${NC}\n" "CONTAINER" "STATUS" "HEALTH" "IMAGEM"
+                echo "------------------------------------------------------------------------------------"
+                while IFS= read -r svc; do
+                    [[ -z "$svc" ]] && continue
+                    local cids
+                    cids=$(docker ps -q --filter "label=com.docker.swarm.service.name=${svc}" 2>/dev/null)
+                    if [[ -z "$cids" ]]; then
+                        printf "%-45s %-12s %-10s %s\n" "$svc" "no-task" "-" "-"
+                        continue
+                    fi
+                    while IFS= read -r cid; do
+                        [[ -z "$cid" ]] && continue
+                        local cname cstatus chealth cimage hcolor
+                        cname=$(docker inspect --format '{{.Name}}' "$cid" 2>/dev/null | sed 's|^/||')
+                        cstatus=$(docker inspect --format '{{.State.Status}}' "$cid" 2>/dev/null)
+                        chealth=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null)
+                        cimage=$(docker inspect --format '{{.Config.Image}}' "$cid" 2>/dev/null)
+                        case "$chealth" in
+                            healthy)   hcolor="${GREEN}" ;;
+                            unhealthy) hcolor="${RED}" ;;
+                            starting)  hcolor="${YELLOW}" ;;
+                            *)         hcolor="${NC}" ;;
+                        esac
+                        printf "%-45s %-12s ${hcolor}%-10s${NC} %s\n" "${cname:0:44}" "$cstatus" "$chealth" "$cimage"
+                    done <<< "$cids"
+                done <<< "$svcs"
+                echo ""
+                echo -e "${CYAN}Dica:${NC} para detalhes de um container unhealthy:"
+                echo -e "  docker inspect --format '{{json .State.Health}}' <container> | jq"
+            fi
             ;;
         uninstall)
             read -rp "Confirmar desinstalacao de ${name}? (s/N): " conf
@@ -3475,6 +4127,7 @@ main() {
                 echo ""
                 install_docker
                 install_docker_compose
+                init_swarm
                 
                 if [[ -z "$EMAIL" ]]; then
                     setup_initial
