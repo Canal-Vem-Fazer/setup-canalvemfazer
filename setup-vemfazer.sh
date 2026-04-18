@@ -260,13 +260,6 @@ nome_credenciais() {
     echo -e "$branco         ██║     ██╔══██╗██╔══╝  ██║  ██║██╔══╝  ██║╚██╗██║██║     ██║██╔══██║██║╚════██║      \e[0m"
     echo -e "$branco         ╚██████╗██║  ██║███████╗██████╔╝███████╗██║ ╚████║╚██████╗██║██║  ██║██║███████║      \e[0m"
     echo -e "$branco          ╚═════╝╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝╚═╝╚═╝  ╚═╝╚═╝╚══════╝      \e[0m"
-    echo -e "$branco                                                                                               \e[0m"
-    echo -e "$branco   ██████╗  ██████╗     ██████╗  ██████╗ ██████╗ ████████╗ █████╗ ██╗███╗   ██╗███████╗██████╗ \e[0m"
-    echo -e "$branco   ██╔══██╗██╔═══██╗    ██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██╔══██╗██║████╗  ██║██╔════╝██╔══██╗\e[0m"
-    echo -e "$branco   ██║  ██║██║   ██║    ██████╔╝██║   ██║██████╔╝   ██║   ███████║██║██╔██╗ ██║█████╗  ██████╔╝\e[0m"
-    echo -e "$branco   ██║  ██║██║   ██║    ██╔═══╝ ██║   ██║██╔══██╗   ██║   ██╔══██║██║██║╚██╗██║██╔══╝  ██╔══██╗\e[0m"
-    echo -e "$branco   ██████╔╝╚██████╔╝    ██║     ╚██████╔╝██║  ██║   ██║   ██║  ██║██║██║ ╚████║███████╗██║  ██║\e[0m"
-    echo -e "$branco   ╚═════╝  ╚═════╝     ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝\e[0m"
     echo ""
     echo ""
     info_credenciais
@@ -279,23 +272,24 @@ nome_credenciais() {
 
 ## Nome do instalador
 
-nome_instalador() { 
+nome_instalador() {
     clear
     echo ""
-    echo -e "$branco       ███████╗███████╗████████╗██╗   ██╗██████╗      ██████╗ ██████╗ ██╗ ██████╗ ███╗   ██╗\e[0m"
-    echo -e "$branco       ██╔════╝██╔════╝╚══██╔══╝██║   ██║██╔══██╗    ██╔═══██╗██╔══██╗██║██╔═══██╗████╗  ██║\e[0m"
-    echo -e "$branco       ███████╗█████╗     ██║   ██║   ██║██████╔╝    ██║   ██║██████╔╝██║██║   ██║██╔██╗ ██║\e[0m"
-    echo -e "$branco       ╚════██║██╔══╝     ██║   ██║   ██║██╔═══╝     ██║   ██║██╔══██╗██║██║   ██║██║╚██╗██║\e[0m"
-    echo -e "$branco       ███████║███████╗   ██║   ╚██████╔╝██║         ╚██████╔╝██║  ██║██║╚██████╔╝██║ ╚████║\e[0m"
-    echo -e "$branco       ╚══════╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝          ╚═════╝ ╚═╝  ╚═╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝\e[0m"
-    echo -e "$branco                                                                                            \e[0m"
-    echo -e "$branco                                  ██████╗     █████╗     ██████╗                            \e[0m"
-    echo -e "$branco                                  ╚════██╗   ██╔══██╗   ██╔═████╗                           \e[0m"
-    echo -e "$branco                        █████╗     █████╔╝   ╚█████╔╝   ██║██╔██║    █████╗                 \e[0m"
-    echo -e "$branco                        ╚════╝    ██╔═══╝    ██╔══██╗   ████╔╝██║    ╚════╝                 \e[0m"
-    echo -e "$branco                                  ███████╗██╗╚█████╔╝██╗╚██████╔╝                           \e[0m"
-    echo -e "$branco                                  ╚══════╝╚═╝ ╚════╝ ╚═╝ ╚═════╝                            \e[0m"
-    echo "" 
+    echo -e "$branco ##################################################################################\e[0m"
+    echo -e "$branco #                                                                                #\e[0m"
+    echo -e "$branco #   ██╗   ██╗███████╗███╗   ███╗    ███████╗ █████╗ ███████╗███████╗██████╗      #\e[0m"
+    echo -e "$branco #   ██║   ██║██╔════╝████╗ ████║    ██╔════╝██╔══██╗╚══███╔╝██╔════╝██╔══██╗     #\e[0m"
+    echo -e "$branco #   ██║   ██║█████╗  ██╔████╔██║    █████╗  ███████║  ███╔╝ █████╗  ██████╔╝     #\e[0m"
+    echo -e "$branco #   ╚██╗ ██╔╝██╔══╝  ██║╚██╔╝██║    ██╔══╝  ██╔══██║ ███╔╝  ██╔══╝  ██╔══██╗     #\e[0m"
+    echo -e "$branco #    ╚████╔╝ ███████╗██║ ╚═╝ ██║    ██║     ██║  ██║███████╗███████╗██║  ██║     #\e[0m"
+    echo -e "$branco #     ╚═══╝  ╚══════╝╚═╝     ╚═╝    ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝     #\e[0m"
+    echo -e "$branco #                                                                                #\e[0m"
+    echo -e "$branco #   Instalador Unificado de Ferramentas Open Source                              #\e[0m"
+    echo -e "$branco #   Canal: Vem Fazer | Raphael Batista                                           #\e[0m"
+    echo -e "$branco #   YouTube: https://www.youtube.com/@VemFazer                                   #\e[0m"
+    echo -e "$branco #                                                                                #\e[0m"
+    echo -e "$branco ##################################################################################\e[0m"
+    echo ""
 }
 
 
@@ -2328,8 +2322,8 @@ menu_comandos(){
 
   ## Chatwoot
   echo -e "> ${verde}Comandos do Chatwoot:${reset}"
-  echo -e "${branco} • ${amarelo}chatwoot.mail${reset} - ${branco}Troca os Emails do Chatwoot pela versão do Orion${reset}"
-  echo -e "${branco} • ${amarelo}chatwoot.n.mail${reset} - ${branco}Troca os Emails do Chatwoot Mega pela versão do Orion${reset}"
+  echo -e "${branco} • ${amarelo}chatwoot.mail${reset} - ${branco}Troca os Emails do Chatwoot pela versão customizada${reset}"
+  echo -e "${branco} • ${amarelo}chatwoot.n.mail${reset} - ${branco}Troca os Emails do Chatwoot Mega pela versão customizada${reset}"
   echo ""
 
   ## Ferramentas
@@ -3574,7 +3568,7 @@ ferramenta_testeemail() {
 
         echo -e "\e[97mPasso${amarelo} 2/5\e[0m"
         echo -e "${amarelo}--> Caso não tiver um usuário do email, use o próprio email abaixo"
-        echo -en "\e[33mDigite o usuário de Email (ex: oriondesign ou contato@vemfazer.com): \e[0m"
+        echo -en "\e[33mDigite o usuário de Email (ex: contato@vemfazer.com): \e[0m"
         read -r user_teste
         echo ""
 
@@ -3741,7 +3735,7 @@ while true; do
     ## Pergunta o nome da Rede Interna
     echo -e "\e[97mPasso$amarelo 5/6\e[0m"
     echo -e "$amarelo--> Não pode conter Espaços e/ou cartacteres especiais."
-    echo -en "\e[33mDigite um nome para sua rede interna (ex: OrionNet): \e[0m" && read -r nome_rede_interna
+    echo -en "\e[33mDigite um nome para sua rede interna (ex: VemFazerNet): \e[0m" && read -r nome_rede_interna
     echo ""
     
     ## Pergunta o Email para informações sobre o certificado
@@ -5555,7 +5549,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r user_smtp_chatwoot
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r user_smtp_chatwoot
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -8105,7 +8099,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 4/7\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r usuario_email_typebot
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r usuario_email_typebot
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -8532,7 +8526,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 4/7\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r usuario_smtp_n8n
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r usuario_smtp_n8n
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -10611,7 +10605,7 @@ while true; do
 
     ##Pergunta o Dominio para a ferramenta
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r user_baserow
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r user_baserow
     echo ""
 
     ##Pergunta o Dominio para a ferramenta
@@ -11637,7 +11631,7 @@ while true; do
     ## Pergunta o Ususario SMTP
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuario para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r user_calcom
+    echo -en "\e[33mDigite o Usuario para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r user_calcom
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -13373,7 +13367,7 @@ while true; do
     ## Pergunta o User SMTP
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuario do SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r user_smtp_formbricks
+    echo -en "\e[33mDigite o Usuario do SMTP (ex: contato@vemfazer.com): \e[0m" && read -r user_smtp_formbricks
     echo ""
     
     ## Pergunta a Senha SMTP
@@ -15056,7 +15050,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r user_smtp_chatwoot
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r user_smtp_chatwoot
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -16837,7 +16831,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r user_smtp_docuseal
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r user_smtp_docuseal
     echo ""
 
     ##Pergunta o Dominio para a ferramenta
@@ -17619,7 +17613,7 @@ while true; do
     ###Pergunta o usuário do Email SMTP
     #echo -e "\e[97mPasso$amarelo 4/7\e[0m"
     #echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    #echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r user_email_dify
+    #echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r user_email_dify
     #echo ""
 #
     ### Pergunta a senha do SMTP
@@ -19807,7 +19801,7 @@ while true; do
     ## Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r user_smtp_vaultwarden
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r user_smtp_vaultwarden
     echo ""
     
     ## Pergunta a Senha SMTP
@@ -21097,7 +21091,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     #echo -e "\e[97mPasso$amarelo 5/10\e[0m"
     #echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    #echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r usuario_email_supabase
+    #echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r usuario_email_supabase
     #echo ""
     
     ## Pergunta a senha do SMTP
@@ -22584,7 +22578,7 @@ while true; do
     ## Pergunta o Ususario SMTP
     echo -e "\e[97mPasso$amarelo 5/8\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuario para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r user_smtp_lowcoder
+    echo -en "\e[33mDigite o Usuario para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r user_smtp_lowcoder
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -24066,7 +24060,7 @@ while true; do
     ## Pergunta o User SMTP
     echo -e "\e[97mPasso$amarelo 7/10\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuario do SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r user_smtp_humhub
+    echo -en "\e[33mDigite o Usuario do SMTP (ex: contato@vemfazer.com): \e[0m" && read -r user_smtp_humhub
     echo ""
     
     ## Pergunta a Senha SMTP
@@ -24706,7 +24700,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r user_smtp_twentycrm
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r user_smtp_twentycrm
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -25373,7 +25367,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 5/8\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r usuario_email_outline
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r usuario_email_outline
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -26948,7 +26942,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r usuario_email_documenso
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r usuario_email_documenso
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -27328,7 +27322,7 @@ requisitar_outra_instalacao
 #    ##Pergunta o usuário do Email SMTP
 #    echo -e "\e[97mPasso$amarelo 7/10\e[0m"
 #    echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-#    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r usuario_smtp_moodle
+#    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r usuario_smtp_moodle
 #    echo ""
 #    
 #    ## Pergunta a senha do SMTP
@@ -27684,7 +27678,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r usuario_smtp_tooljet
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r usuario_smtp_tooljet
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -29939,7 +29933,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r usuario_email_krayincrm
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r usuario_email_krayincrm
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -30417,7 +30411,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 7/10\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r usuario_email_planka
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r usuario_email_planka
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -32415,7 +32409,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 6/9\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r smtp_user_evoai
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r smtp_user_evoai
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -33131,7 +33125,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 3/6\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r smtp_user_passbolt
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r smtp_user_passbolt
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -35012,7 +35006,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 5/8\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r hoppscotch_smtp_user
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r hoppscotch_smtp_user
     echo ""
     
     ## Pergunta a senha do SMTP
@@ -41351,7 +41345,7 @@ while true; do
     ##Pergunta o usuário do Email SMTP
     echo -e "\e[97mPasso$amarelo 4/7\e[0m"
     echo -e "$amarelo--> Caso não tiver um usuario do email, use o proprio email abaixo"
-    echo -en "\e[33mDigite o Usuário para SMTP (ex: oriondesign ou contato@vemfazer.com): \e[0m" && read -r username_smtp_evocrm
+    echo -en "\e[33mDigite o Usuário para SMTP (ex: contato@vemfazer.com): \e[0m" && read -r username_smtp_evocrm
     echo ""
     
     ## Pergunta a senha do SMTP
