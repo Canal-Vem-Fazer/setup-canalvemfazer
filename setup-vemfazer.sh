@@ -4512,6 +4512,13 @@ else
 fi
 echo ""
 
+## Cria os volumes externos exigidos pelas stacks (Traefik/Portainer)
+docker volume create volume_swarm_shared > /dev/null 2>&1
+docker volume create volume_swarm_certificates > /dev/null 2>&1
+docker volume create portainer_data > /dev/null 2>&1
+echo "1/1 - [ OK ] - Volumes externos (swarm_shared, swarm_certificates, portainer_data)"
+echo ""
+
 ## Mensagem de Passo
 echo -e "\e[97m• INSTALANDO TRAEFIK \e[33m[5/9]\e[0m"
 echo ""
@@ -6176,11 +6183,14 @@ services:
     networks:
       - $nome_rede_interna
     environment:
+      - URL_BACKEND=$url_whaticket_back
+      - URL_FRONTEND=$url_whaticket_front
+      - REACT_APP_BACKEND_URL=https://$url_whaticket_back
       - BACKEND_URL=https://$url_whaticket_back
       - FRONTEND_URL=https://$url_whaticket_front
-    ## Substitui em runtime a URL do backend nos JS estáticos buildados
-    command: >
-      sh -c "find /usr/share/nginx/html -type f \\( -name '*.js' -o -name '*.html' \\) -exec sed -i 's|http://localhost:8080|https://$url_whaticket_back|g; s|https://api.whaticket.com|https://$url_whaticket_back|g' {} + ; nginx -g 'daemon off;'"
+      - PORT=3000
+      - NODE_ENV=production
+      - TZ=America/Sao_Paulo
     deploy:
       mode: replicated
       replicas: 1
@@ -6198,7 +6208,7 @@ services:
         - traefik.http.routers.whaticket${1:+_$1}_frontend.tls.certresolver=letsencryptresolver
         - traefik.http.routers.whaticket${1:+_$1}_frontend.priority=1
         - traefik.http.routers.whaticket${1:+_$1}_frontend.service=whaticket${1:+_$1}_frontend
-        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.server.port=80
+        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.server.port=3000
         - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.passHostHeader=true
 
 ## --------------------------- WHATICKET --------------------------- ##
