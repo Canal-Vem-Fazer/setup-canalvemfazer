@@ -3706,7 +3706,7 @@ By: Vem Fazer"
 ferramenta_traefik_e_portainer() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -4535,7 +4535,7 @@ echo ""
 ferramenta_postgres_setup() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Ativa a função dados para pegar os dados da vps
 dados
@@ -4820,7 +4820,7 @@ echo ""
 ferramenta_pgvector_setup() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Ativa a função dados para pegar os dados da vps
 dados
@@ -5093,7 +5093,7 @@ echo ""
 ferramenta_redis_setup() {
 
 ## Verifica os recursos
-recursos 1 2 && continue || return
+recursos 1 2 || return
 ## Ativa a função dados para pegar os dados da vps
 dados
 
@@ -5369,7 +5369,7 @@ echo ""
 ferramenta_mysql_setup() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Ativa a função dados para pegar os dados da vps
 dados
@@ -5538,7 +5538,7 @@ requisitar_outra_instalacao
 ferramenta_whaticket() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -5888,7 +5888,7 @@ requisitar_outra_instalacao
 ferramenta_chatwoot() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -6523,7 +6523,7 @@ requisitar_outra_instalacao
 ferramenta_evolution() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -6974,7 +6974,7 @@ requisitar_outra_instalacao
 ferramenta_evolution_lite() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -7382,7 +7382,7 @@ requisitar_outra_instalacao
 ferramenta_evolution_v1() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -7715,7 +7715,7 @@ requisitar_outra_instalacao
 ferramenta_evolution_v2() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -8155,7 +8155,7 @@ requisitar_outra_instalacao
 ferramenta_minio() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -8439,7 +8439,7 @@ requisitar_outra_instalacao
 ferramenta_typebot() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -8866,7 +8866,7 @@ requisitar_outra_instalacao
 ferramenta_n8n() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -9481,7 +9481,7 @@ requisitar_outra_instalacao
 ferramenta_flowise() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -9746,7 +9746,7 @@ requisitar_outra_instalacao
 ferramenta_pgAdmin_4() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -9979,7 +9979,7 @@ requisitar_outra_instalacao
 ferramenta_nocobase() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -10263,7 +10263,7 @@ requisitar_outra_instalacao
 ferramenta_botpress() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -10541,7 +10541,7 @@ requisitar_outra_instalacao
 ferramenta_wordpress() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -10949,10 +10949,10 @@ requisitar_outra_instalacao
 ferramenta_baserow() {
 
 ## Verifica os recursos
-recursos 2 4 && continue || return
+recursos 2 4 || return
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 ## Limpa o terminal
 clear
 
@@ -11290,7 +11290,7 @@ requisitar_outra_instalacao
 ferramenta_mongodb() {
 
 ## Verifica os recursos
-recursos 1 2 && continue || return
+recursos 1 2 || return
 
 ## Limpa o terminal
 clear
@@ -11518,7 +11518,7 @@ requisitar_outra_instalacao
 ferramenta_rabbitmq() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 # Limpa o terminal
 clear
@@ -11763,7 +11763,7 @@ requisitar_outra_instalacao
 ferramenta_uptimekuma() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 # Limpa o terminal
 clear
@@ -11976,7 +11976,7 @@ requisitar_outra_instalacao
 ferramenta_calcom() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 # Limpa o terminal
 clear
@@ -12287,7 +12287,7 @@ requisitar_outra_instalacao
 ferramenta_mautic() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 # Limpa o terminal
 clear
@@ -12644,7 +12644,7 @@ requisitar_outra_instalacao
 ferramenta_appsmith() {
 
 ## Verifica os recursos
-recursos 2 4 && continue || return
+recursos 2 4 || return
 
 # Limpa o terminal
 clear
@@ -12866,7 +12866,7 @@ requisitar_outra_instalacao
 ferramenta_qdrant() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 # Limpa o terminal
 clear
@@ -13180,7 +13180,7 @@ requisitar_outra_instalacao
 ferramenta_woofed() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 # Limpa o terminal
 clear
@@ -13712,7 +13712,7 @@ requisitar_outra_instalacao
 ferramenta_formbricks() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 # Limpa o terminal
 clear
@@ -14124,7 +14124,7 @@ requisitar_outra_instalacao
 ferramenta_nocodb() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -14413,7 +14413,7 @@ requisitar_outra_instalacao
 ferramenta_langfuse() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -14851,7 +14851,7 @@ requisitar_outra_instalacao
 ferramenta_metabase() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -15098,7 +15098,7 @@ requisitar_outra_instalacao
 ferramenta_odoo() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -15389,7 +15389,7 @@ requisitar_outra_instalacao
 ferramenta_chatwoot_nestor() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -15952,7 +15952,7 @@ requisitar_outra_instalacao
 ferramenta_unoapi() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -16268,7 +16268,7 @@ requisitar_outra_instalacao
 ferramenta_n8n_quepasa() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -16877,7 +16877,7 @@ requisitar_outra_instalacao
 ferramenta_quepasa() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -17176,7 +17176,7 @@ requisitar_outra_instalacao
 ferramenta_docuseal() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -17481,7 +17481,7 @@ requisitar_outra_instalacao
 ferramenta_monitor() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -17940,7 +17940,7 @@ requisitar_outra_instalacao
 ferramenta_dify() {
 
 ## Verifica os recursos
-recursos 2 4 && continue || return
+recursos 2 4 || return
 
 ## Limpa o terminal
 clear
@@ -19107,7 +19107,7 @@ requisitar_outra_instalacao
 ferramenta_ollama() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -19367,7 +19367,7 @@ requisitar_outra_instalacao
 ferramenta_affine() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -19756,7 +19756,7 @@ requisitar_outra_instalacao
 ferramenta_directus() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -20146,7 +20146,7 @@ requisitar_outra_instalacao
 ferramenta_vaultwarden() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 # Limpa o terminal
 clear
@@ -20471,7 +20471,7 @@ requisitar_outra_instalacao
 ferramenta_nextcloud() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -20809,7 +20809,7 @@ requisitar_outra_instalacao
 ferramenta_strapi() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -21076,7 +21076,7 @@ requisitar_outra_instalacao
 ferramenta_phpmyadmin() {
 
 ## Verifica os recursos
-recursos 1 2 && continue || return
+recursos 1 2 || return
 
 ## Limpa o terminal
 clear
@@ -21326,7 +21326,7 @@ requisitar_outra_instalacao
 ferramenta_supabase() {
 
 ## Verifica os recursos
-recursos 2 4 && continue || return
+recursos 2 4 || return
 
 ## Limpa o terminal
 clear
@@ -22658,7 +22658,7 @@ requisitar_outra_instalacao
 ferramenta_ntfy() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -22913,7 +22913,7 @@ requisitar_outra_instalacao
 ferramenta_lowcoder() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -23375,7 +23375,7 @@ requisitar_outra_instalacao
 ferramenta_langflow() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -23705,7 +23705,7 @@ requisitar_outra_instalacao
 ferramenta_openproject() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -24034,7 +24034,7 @@ requisitar_outra_instalacao
 ferramenta_zep() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 # Limpa o terminal
 clear
@@ -24371,7 +24371,7 @@ requisitar_outra_instalacao
 ferramenta_humhub() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 # Limpa o terminal
 clear
@@ -24796,7 +24796,7 @@ requisitar_outra_instalacao
 ferramenta_yourls() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -25045,7 +25045,7 @@ requisitar_outra_instalacao
 ferramenta_twentycrm() {
 
 ## Verifica os recursos
-recursos 1 4 && continue || return
+recursos 1 4 || return
 
 ## Limpa o terminal
 clear
@@ -25445,7 +25445,7 @@ requisitar_outra_instalacao
 ferramenta_mattermost() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -25700,7 +25700,7 @@ requisitar_outra_instalacao
 ferramenta_outline() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -26088,7 +26088,7 @@ requisitar_outra_instalacao
 ferramenta_focalboard() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -26301,7 +26301,7 @@ requisitar_outra_instalacao
 ferramenta_glpi() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -26548,7 +26548,7 @@ requisitar_outra_instalacao
 ferramenta_anythingllm() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -26800,7 +26800,7 @@ requisitar_outra_instalacao
 ferramenta_excalidraw() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -27021,7 +27021,7 @@ requisitar_outra_instalacao
 ferramenta_easyappointments() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -27287,7 +27287,7 @@ requisitar_outra_instalacao
 ferramenta_documenso() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -28023,7 +28023,7 @@ requisitar_outra_instalacao
 ferramenta_tooljet() {
 
 ## Verifica os recursos
-recursos 2 4 && continue || return
+recursos 2 4 || return
 
 ## Limpa o terminal
 clear
@@ -28458,7 +28458,7 @@ requisitar_outra_instalacao
 ferramenta_stirlingpdf() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -28781,7 +28781,7 @@ requisitar_outra_instalacao
 ferramenta_clickhouse() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -29028,7 +29028,7 @@ requisitar_outra_instalacao
 ferramenta_redisinsight() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -29280,7 +29280,7 @@ requisitar_outra_instalacao
 ferramenta_traccar() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -29551,7 +29551,7 @@ requisitar_outra_instalacao
 ferramenta_firecrawl() {
 
 ## Verifica os recursos
-recursos 2 4 && continue || return
+recursos 2 4 || return
 
 ## Limpa o terminal
 clear
@@ -30009,7 +30009,7 @@ requisitar_outra_instalacao
 ferramenta_wuzapi() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -30275,7 +30275,7 @@ requisitar_outra_instalacao
 ferramenta_krayincrm() {
 
 ## Verifica os recursos
-recursos 2 4 && continue || return
+recursos 2 4 || return
 
 ## Limpa o terminal
 clear
@@ -30736,7 +30736,7 @@ requisitar_outra_instalacao
 ferramenta_planka() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -31142,7 +31142,7 @@ requisitar_outra_instalacao
 ferramenta_wppconnect() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -31344,7 +31344,7 @@ requisitar_outra_instalacao
 ferramenta_browserless() {
 
 ## Verifica os recursos
-recursos 2 4 && continue || return
+recursos 2 4 || return
 
 ## Limpa o terminal
 clear
@@ -31548,7 +31548,7 @@ requisitar_outra_instalacao
 ferramenta_frappe() {
 
 ## Verifica os recursos
-recursos 2 4 && continue || return
+recursos 2 4 || return
 
 ## Limpa o terminal
 clear
@@ -32028,7 +32028,7 @@ requisitar_outra_instalacao
 ferramenta_bolt() {
 
 ## Verifica os recursos
-recursos 2 4 && continue || return
+recursos 2 4 || return
 
 ## Limpa o terminal
 clear
@@ -32246,7 +32246,7 @@ requisitar_outra_instalacao
 ferramenta_wisemapping() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -32737,7 +32737,7 @@ requisitar_outra_instalacao
 ferramenta_evoai() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -33179,7 +33179,7 @@ requisitar_outra_instalacao
 ferramenta_keycloak() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -33465,7 +33465,7 @@ requisitar_outra_instalacao
 ferramenta_passbolt() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -33926,7 +33926,7 @@ requisitar_outra_instalacao
 ferramenta_gotenberg() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -34169,7 +34169,7 @@ requisitar_outra_instalacao
 ferramenta_wiki() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -34405,7 +34405,7 @@ requisitar_outra_instalacao
 ferramenta_azuracast() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -34701,7 +34701,7 @@ requisitar_outra_instalacao
 ferramenta_shlink() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -35036,7 +35036,7 @@ requisitar_outra_instalacao
 ferramenta_rustdesk() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -35341,7 +35341,7 @@ requisitar_outra_instalacao
 ferramenta_hoppscotch() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -35817,7 +35817,7 @@ requisitar_outra_instalacao
 ferramenta_transcrevezap() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -36099,7 +36099,7 @@ requisitar_outra_instalacao
 ferramenta_omnitools() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -36291,7 +36291,7 @@ requisitar_outra_instalacao
 ferramenta_serpbear() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -36530,7 +36530,7 @@ requisitar_outra_instalacao
 ferramenta_activepieces() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -36829,7 +36829,7 @@ requisitar_outra_instalacao
 
 ferramenta_authentik() {
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -37184,7 +37184,7 @@ requisitar_outra_instalacao
 ferramenta_checkmate() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -37497,7 +37497,7 @@ requisitar_outra_instalacao
 ferramenta_heyform() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -37789,7 +37789,7 @@ requisitar_outra_instalacao
 ferramenta_wekan() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -38018,7 +38018,7 @@ requisitar_outra_instalacao
 ferramenta_opensign() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -38324,7 +38324,7 @@ requisitar_outra_instalacao
 ferramenta_docmost() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -38625,7 +38625,7 @@ requisitar_outra_instalacao
 ferramenta_netbox() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -39090,7 +39090,7 @@ requisitar_outra_instalacao
 ferramenta_kafka() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -39405,7 +39405,7 @@ requisitar_outra_instalacao
 ferramenta_astracampaign() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -39734,7 +39734,7 @@ requisitar_outra_instalacao
 ferramenta_duplicati() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -39965,7 +39965,7 @@ requisitar_outra_instalacao
 ferramenta_pgbackweb() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -40205,7 +40205,7 @@ requisitar_outra_instalacao
 ferramenta_jitsi() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -40667,7 +40667,7 @@ requisitar_outra_instalacao
 ferramenta_code_server() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -40915,7 +40915,7 @@ requisitar_outra_instalacao
 ferramenta_papra() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -41150,7 +41150,7 @@ requisitar_outra_instalacao
 ferramenta_zerobyte() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -41381,7 +41381,7 @@ requisitar_outra_instalacao
 ferramenta_evolution_go() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
@@ -41685,7 +41685,7 @@ requisitar_outra_instalacao
 ferramenta_evocrm() {
 
 ## Verifica os recursos
-recursos 4 8 && continue || return
+recursos 4 8 || return
 
 ## Limpa o terminal
 clear
@@ -42435,7 +42435,7 @@ requisitar_outra_instalacao
 n8n.mcp() {
 
 ## Verifica os recursos
-recursos 2 2 && continue || return
+recursos 2 2 || return
 
 ## Limpa o terminal
 clear
@@ -42690,7 +42690,7 @@ requisitar_outra_instalacao
 ferramenta_openwebui() {
 
 ## Verifica os recursos
-recursos 1 1 && continue || return
+recursos 1 1 || return
 
 ## Limpa o terminal
 clear
