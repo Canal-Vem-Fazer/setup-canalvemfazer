@@ -2249,8 +2249,8 @@ menu_instalador() {
 }
 
 menu_instalador_pg_1(){
-    echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${amarelo}[ 23 ]${reset} - ${branco}Langfuse ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer ${verde}[1/1]${reset}              ${verde}| ${reset}  ${amarelo}[ 24 ]${reset} - ${branco}Metabase ${verde}[1/1] ${reset}"
+    echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${amarelo}[ 23 ]${reset} - ${branco}Whaticket Community ${verde}[NOVO] ${reset}"
+    echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer ${verde}[1/1]${reset}              ${verde}| ${reset}  ${amarelo}[ 24 ]${reset} - ${branco}Izing ${verde}[NOVO] ${reset}"
     echo -e "${amarelo}[ 02 ]${reset} - ${branco}Chatwoot ${verde}[2/2]${reset}                         ${verde}| ${reset}  ${amarelo}[ 25 ]${reset} - ${branco}Odoo ${verde}[2/2] ${reset}"
     echo -e "${amarelo}[ 03 ]${reset} - ${branco}Evolution API ${verde}[1/1]${reset}                    ${verde}| ${reset}  ${amarelo}[ 26 ]${reset} - ${branco}Uno API ${verde}[1/1] ${reset}"
     echo -e "${amarelo}[ 04 ]${reset} - ${branco}MinIO ${verde}[1/1]${reset}                            ${verde}| ${reset}  ${amarelo}[ 27 ]${reset} - ${branco}Quepasa API ${verde}[2/2] ${reset}"
@@ -2273,7 +2273,7 @@ menu_instalador_pg_1(){
     echo -e "${amarelo}[ 21 ]${reset} - ${branco}Formbricks ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 44 ]${reset} - ${branco}HumHub ${verde}[1/1] ${reset}"
     echo -e "${amarelo}[ 22 ]${reset} - ${branco}NocoDB ${verde}[1/1]${reset}                           ${verde}| ${reset}  ${amarelo}[ 45 ]${reset} - ${branco}Yourls ${verde}[1/1] ${reset}"
     echo -e ""
-    echo -e "${verde}>>> ${amarelo}[ 138 ]${reset} - ${branco}Whaticket Community ${verde}[NOVO]${reset}     ${amarelo}[ 139 ]${reset} - ${branco}Izing ${verde}[NOVO]${reset}                       ${verde}<<<${reset}"
+    echo -e "${verde}>>> ${amarelo}[ 138 ]${reset} - ${branco}Langfuse ${verde}[1/1]${reset}                ${amarelo}[ 139 ]${reset} - ${branco}Metabase ${verde}[1/1]${reset}                       ${verde}<<<${reset}"
     echo -e ""
     echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R2${branco} para ir para pagina 2 -->${reset}"
     echo -e ""
@@ -44572,7 +44572,7 @@ while true; do
             ferramenta_traefik_e_portainer
             ;;
 
-        139|izing|IZING)
+        24|izing|IZING)
 
             verificar_stack "izing${opcao2:+_$opcao2}" && continue || echo ""
 
@@ -44587,7 +44587,7 @@ while true; do
             fi
             ;;
 
-        138|whaticket|WHATICKET)
+        23|whaticket|WHATICKET)
 
             verificar_stack "whaticket${opcao2:+_$opcao2}" && continue || echo ""
 
@@ -44938,7 +44938,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        23|langfuse|LANGFUSE)
+        138|langfuse|LANGFUSE)
 
             verificar_stack "langfuse${opcao2:+_$opcao2}" && continue || echo ""
 
@@ -44954,7 +44954,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        24|metabase|METABASE)
+        139|metabase|METABASE)
 
             verificar_stack "metabase${opcao2:+_$opcao2}" && continue || echo ""
 
