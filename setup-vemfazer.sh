@@ -6183,12 +6183,30 @@ services:
     networks:
       - $nome_rede_interna
     environment:
-      - URL_BACKEND=$url_whaticket_back
-      - URL_FRONTEND=$url_whaticket_front
+      - URL_BACKEND=https://$url_whaticket_back
+      - URL_FRONTEND=https://$url_whaticket_front
       - REACT_APP_BACKEND_URL=https://$url_whaticket_back
+      - REACT_APP_FRONTEND_URL=https://$url_whaticket_front
       - BACKEND_URL=https://$url_whaticket_back
       - FRONTEND_URL=https://$url_whaticket_front
       - TZ=America/Sao_Paulo
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        ROOT_DIR=/usr/share/nginx/html
+        [ -d "\$ROOT_DIR" ] || ROOT_DIR=/app/build
+        [ -d "\$ROOT_DIR" ] || ROOT_DIR=/app/dist
+        echo "Patching frontend with REACT_APP_BACKEND_URL=\$REACT_APP_BACKEND_URL in \$ROOT_DIR"
+        find "\$ROOT_DIR" -type f \\( -name "*.js" -o -name "*.html" \\) -exec sed -i "s|http://localhost:8080|\$REACT_APP_BACKEND_URL|g; s|https://localhost:8080|\$REACT_APP_BACKEND_URL|g; s|http://localhost:3000|\$REACT_APP_FRONTEND_URL|g" {} +
+        if command -v nginx >/dev/null 2>&1; then
+          exec nginx -g 'daemon off;'
+        elif [ -f /app/server.js ]; then
+          exec node /app/server.js
+        else
+          exec npm start
+        fi
     deploy:
       mode: replicated
       replicas: 1
