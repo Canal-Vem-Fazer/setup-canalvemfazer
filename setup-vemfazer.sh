@@ -2339,6 +2339,8 @@ menu_comandos(){
   echo -e "${branco} • ${amarelo}portainer.update${reset} - ${branco}Atualiza o Portainer${reset}"
   echo -e "${branco} • ${amarelo}traefik.update${reset} - ${branco}Atualiza o Traefik${reset}"
   echo -e "${branco} • ${amarelo}traefik.dash${reset} - ${branco}Ativa o Dashboard do Traefik${reset}"
+  echo -e "${branco} • ${amarelo}traefik.reinstall${reset} - ${branco}Reinstala o Traefik (apaga acme.json e refaz SSL)${reset}"
+  echo -e "${branco} • ${amarelo}traefik.check${reset} - ${branco}Verifica certificados SSL emitidos${reset}"
   echo ""
 
   ## Monitoramento
@@ -3767,7 +3769,99 @@ pull() {
     done
 }
 
+## ============================================================
+## verificar_ssl_pos_deploy
+## Detecta automaticamente todos os Hosts (Traefik) dos services
+## criados nos últimos 5 minutos e valida no acme.json se o
+## Let's Encrypt já emitiu o certificado SSL para cada um.
+## É chamada automaticamente antes de "Deseja instalar outra aplicação?".
+## ============================================================
+verificar_ssl_pos_deploy() {
+    # Pega container do Traefik
+    local traefik_cid
+    traefik_cid=$(docker ps --filter name=traefik_traefik -q 2>/dev/null | head -1)
+    [ -z "$traefik_cid" ] && return 0
+
+    # Coleta hosts dos services criados nos últimos 5 minutos com label traefik.enable=true
+    local hosts now created_at host_rules
+    now=$(date +%s)
+    local services_recentes=()
+    while IFS= read -r svc; do
+        [ -z "$svc" ] && continue
+        created_at=$(docker service inspect "$svc" --format '{{.CreatedAt}}' 2>/dev/null)
+        # Converte timestamp ISO para epoch (best effort)
+        local svc_epoch
+        svc_epoch=$(date -d "$created_at" +%s 2>/dev/null || echo 0)
+        # Considera apenas services criados nos últimos 300s
+        if [ "$svc_epoch" -gt 0 ] && [ $((now - svc_epoch)) -le 300 ]; then
+            services_recentes+=("$svc")
+        fi
+    done < <(docker service ls --filter label=traefik.enable=true --format '{{.Name}}' 2>/dev/null)
+
+    [ ${#services_recentes[@]} -eq 0 ] && return 0
+
+    # Extrai hosts das labels traefik.http.routers.*.rule
+    hosts=""
+    for svc in "${services_recentes[@]}"; do
+        host_rules=$(docker service inspect "$svc" --format '{{json .Spec.Labels}}' 2>/dev/null \
+            | grep -oE 'Host\(`[^`]+`\)' \
+            | sed 's/Host(`\([^`]*\)`)/\1/')
+        for h in $host_rules; do
+            hosts+="$h"$'\n'
+        done
+    done
+
+    hosts=$(echo "$hosts" | sort -u | grep -v '^$')
+    [ -z "$hosts" ] && return 0
+
+    echo ""
+    echo -e "\e[33m• VERIFICANDO EMISSÃO DE CERTIFICADOS SSL\e[0m"
+    echo -e "\e[97m  Aguardando 45s para o Let's Encrypt processar o desafio HTTP-01...\e[0m"
+    sleep 45
+
+    # Lê acme.json uma única vez
+    local acme_content
+    acme_content=$(docker exec "$traefik_cid" sh -c 'cat /etc/traefik/letsencrypt/acme.json 2>/dev/null')
+
+    local falhou=0
+    local dominios_falha=""
+    while IFS= read -r host; do
+        [ -z "$host" ] && continue
+        if echo "$acme_content" | grep -q "\"main\"[[:space:]]*:[[:space:]]*\"$host\""; then
+            echo -e "  \e[32m✓\e[0m SSL emitido: \e[97m$host\e[0m"
+        else
+            echo -e "  \e[31m✗\e[0m SSL pendente: \e[97m$host\e[0m"
+            falhou=1
+            dominios_falha+="    • $host"$'\n'
+        fi
+    done <<< "$hosts"
+
+    if [ $falhou -eq 1 ]; then
+        echo ""
+        echo -e "\e[31m  ⚠ Alguns domínios ainda NÃO têm certificado SSL emitido.\e[0m"
+        echo ""
+        echo -e "\e[33m  Domínios pendentes:\e[0m"
+        echo -e "$dominios_falha"
+        echo -e "\e[33m  Possíveis causas:\e[0m"
+        echo -e "    • DNS do domínio não aponta para esta VPS"
+        echo -e "    • Porta 80 bloqueada no firewall (HTTP-01 challenge)"
+        echo -e "    • Rate limit do Let's Encrypt (5 falhas/hora por domínio)"
+        echo ""
+        echo -e "\e[33m  Logs recentes do Traefik (acme/error):\e[0m"
+        docker service logs traefik_traefik --tail 50 2>&1 | grep -iE 'acme|error|certificate' | tail -10
+        echo ""
+        echo -e "\e[33m  Comandos úteis no menu de ferramentas (P4):\e[0m"
+        echo -e "    \e[97mtraefik.check\e[0m     — Lista todos os certificados emitidos"
+        echo -e "    \e[97mtraefik.reinstall\e[0m — Reinstala Traefik e refaz SSL do zero"
+        echo ""
+        sleep 5
+    fi
+}
+
 requisitar_outra_instalacao(){
+    ## Validação automática de SSL para tudo que foi deployado nesta sessão
+    verificar_ssl_pos_deploy
+
     read -p "Deseja instalar outra aplicação? (Y/N): " choice
     if [ "$choice" = "Y" ] || [ "$choice" = "y" ]; then
         return
@@ -4621,9 +4715,7 @@ services:
       - "--certificatesresolvers.letsencryptresolver.acme.email=$email_ssl" ## Email para receber as notificações
       - "--log.level=DEBUG"
       - "--log.format=common"
-      - "--log.filePath=/var/log/traefik/traefik.log"
       - "--accesslog=true"
-      - "--accesslog.filepath=/var/log/traefik/access-log"
 
     volumes:
       - "vol_certificates:/etc/traefik/letsencrypt"
@@ -4699,7 +4791,8 @@ docker tag ghcr.io/traefik/traefik:v3.5.3 traefik/traefik:v3.5.3
 wait_stack "traefik"
 
 telemetria Traefik finalizado
-## Espera 30 segundos
+## Aguarda Traefik registrar conta no Let's Encrypt antes de subir aplicações
+echo -e "\e[33mAguardando Traefik registrar conta no Let's Encrypt (30s)...\e[0m"
 wait_30_sec
 echo ""
 ## Mensagem de Passo
@@ -4923,6 +5016,39 @@ fi
 #echo -e "\e[97mObservação:\e[33m Você tem menos de 5 minutos para criar uma conta no Portainer, caso\e[0m"
 #echo -e "\e[33mexceda esse tempo, você precisara de voltar no menu anterior (digitando: Y)\e[0m"
 #echo -e "\e[33me no menu de ferramentas digitar: \e[97mportainer.restart\e[0m"
+
+## ============================================================
+## Validação pós-deploy: confere se o cert SSL do Portainer foi emitido
+## ============================================================
+echo ""
+echo -e "\e[33m• VERIFICANDO EMISSÃO DO CERTIFICADO SSL\e[0m"
+echo -e "\e[97m  Aguardando 60s para o Let's Encrypt processar o desafio HTTP-01...\e[0m"
+sleep 60
+
+traefik_cid=$(docker ps --filter name=traefik_traefik -q | head -1)
+if [ -n "$traefik_cid" ]; then
+    if docker exec "$traefik_cid" sh -c 'cat /etc/traefik/letsencrypt/acme.json 2>/dev/null' \
+        | grep -q "\"main\"[[:space:]]*:[[:space:]]*\"$url_portainer\""; then
+        echo -e "  \e[32m✓ Certificado SSL emitido com sucesso para $url_portainer\e[0m"
+    else
+        echo ""
+        echo -e "\e[31m  ⚠ ATENÇÃO: Certificado SSL ainda NÃO foi emitido para $url_portainer\e[0m"
+        echo ""
+        echo -e "\e[33m  Possíveis causas:\e[0m"
+        echo -e "    • DNS de $url_portainer não aponta para esta VPS"
+        echo -e "    • Porta 80 bloqueada no firewall (Let's Encrypt usa HTTP-01 challenge)"
+        echo -e "    • Rate limit do Let's Encrypt (5 falhas/hora)"
+        echo ""
+        echo -e "\e[33m  Últimas linhas dos logs do Traefik:\e[0m"
+        docker service logs traefik_traefik --tail 30 2>&1 | grep -iE 'acme|error|certificate' | tail -15
+        echo ""
+        echo -e "\e[33m  Comandos úteis no menu de ferramentas (P4):\e[0m"
+        echo -e "    \e[97mtraefik.check\e[0m     — Lista certificados emitidos"
+        echo -e "    \e[97mtraefik.reinstall\e[0m — Reinstala Traefik e refaz SSL do zero"
+        echo ""
+        sleep 5
+    fi
+fi
 
 ## Creditos do instalador
 creditos_msg
@@ -44241,6 +44367,116 @@ creditos_msg
 requisitar_outra_instalacao
 }
 
+## ============================================================
+## traefik.reinstall — Apaga acme.json e refaz o stack do Traefik
+## Útil quando o cert SSL ficou corrompido / rate-limit / config errada
+## ============================================================
+traefik.reinstall() {
+    clear
+    echo -e "\e[33m=== REINSTALAR TRAEFIK ===\e[0m"
+    echo ""
+    echo -e "\e[31mATENÇÃO:\e[0m Esta ação irá:"
+    echo -e "  • Remover o stack 'traefik'"
+    echo -e "  • Apagar o volume 'volume_swarm_certificates' (acme.json será zerado)"
+    echo -e "  • Recriar e fazer deploy do stack 'traefik'"
+    echo ""
+    echo -e "Aplicações continuarão rodando, mas ficarão sem SSL por ~1 minuto."
+    echo ""
+    echo -en "\e[33mConfirma? (s/N): \e[0m"
+    read -r conf
+    if [[ ! "$conf" =~ ^[sSyY]$ ]]; then
+        echo "Cancelado."
+        sleep 2
+        return 0
+    fi
+
+    dados 2>/dev/null
+
+    echo ""
+    echo -e "\e[33m1/5 - Removendo stack traefik...\e[0m"
+    docker stack rm traefik >/dev/null 2>&1
+    local tent=0
+    while docker stack ls --format "{{.Name}}" 2>/dev/null | grep -q "^traefik$"; do
+        sleep 2
+        tent=$((tent+1))
+        [ $tent -ge 30 ] && break
+    done
+    sleep 5
+
+    echo -e "\e[33m2/5 - Apagando volume volume_swarm_certificates...\e[0m"
+    docker volume rm volume_swarm_certificates >/dev/null 2>&1
+    docker volume create volume_swarm_certificates >/dev/null 2>&1
+
+    echo -e "\e[33m3/5 - Verificando traefik.yaml em /root/...\e[0m"
+    if [ ! -f /root/traefik.yaml ]; then
+        echo -e "\e[31mErro: /root/traefik.yaml não encontrado.\e[0m"
+        echo -e "Reinstale via menu principal (opção 1 - Traefik & Portainer)."
+        sleep 5
+        return 1
+    fi
+
+    echo -e "\e[33m4/5 - Fazendo deploy do stack traefik...\e[0m"
+    docker stack deploy --prune --resolve-image always -c /root/traefik.yaml traefik >/dev/null 2>&1
+
+    echo -e "\e[33m5/5 - Aguardando Traefik estar online (60s)...\e[0m"
+    sleep 60
+
+    echo ""
+    echo -e "\e[32m=== Status do Traefik ===\e[0m"
+    docker service ls --filter name=traefik
+    echo ""
+    echo -e "\e[32m=== Últimas 50 linhas dos logs ===\e[0m"
+    docker service logs traefik_traefik --tail 50 2>&1 | tail -50
+    echo ""
+    echo -e "\e[33mDica:\e[0m Use \e[97mtraefik.check\e[0m para verificar quais SSL foram emitidos."
+    echo ""
+    read -r -p "Pressione ENTER para voltar ao menu..." _
+}
+
+## ============================================================
+## traefik.check — Lista certificados SSL emitidos no acme.json
+## ============================================================
+traefik.check() {
+    clear
+    echo -e "\e[33m=== VERIFICAÇÃO DE CERTIFICADOS SSL ===\e[0m"
+    echo ""
+
+    local container_id
+    container_id=$(docker ps --filter name=traefik_traefik -q | head -1)
+    if [ -z "$container_id" ]; then
+        echo -e "\e[31mNenhum container do Traefik está rodando.\e[0m"
+        sleep 3
+        return 1
+    fi
+
+    echo -e "\e[97mDomínios com certificado emitido pelo Let's Encrypt:\e[0m"
+    echo ""
+    local doms
+    doms=$(docker exec "$container_id" sh -c 'cat /etc/traefik/letsencrypt/acme.json 2>/dev/null' \
+        | grep -oE '"main"[[:space:]]*:[[:space:]]*"[^"]+"' \
+        | sed 's/.*"\([^"]*\)"$/\1/' | sort -u)
+
+    if [ -z "$doms" ]; then
+        echo -e "\e[31m  (nenhum certificado emitido ainda)\e[0m"
+        echo ""
+        echo -e "\e[33mPossíveis causas:\e[0m"
+        echo -e "  • DNS do domínio não aponta pra esta VPS"
+        echo -e "  • Porta 80 bloqueada (Let's Encrypt usa HTTP-01 challenge)"
+        echo -e "  • Rate limit do Let's Encrypt (5 falhas/hora por domínio)"
+        echo -e "  • Domínio inválido ou inacessível externamente"
+        echo ""
+        echo -e "\e[33mLogs recentes do Traefik:\e[0m"
+        docker service logs traefik_traefik --tail 30 2>&1 | grep -iE 'acme|error|certificate' | tail -20
+    else
+        echo "$doms" | while read -r d; do
+            echo -e "  \e[32m✓\e[0m $d"
+        done
+    fi
+
+    echo ""
+    read -r -p "Pressione ENTER para voltar ao menu..." _
+}
+
 quepasa.setup.off(){
     echo ""
     echo "Desativando painel /setup do quepasa"
@@ -46718,6 +46954,16 @@ while true; do
         ## Ativar o dashboard do traefik
         traefik.dash)
             traefik.dash
+            ;;
+
+        ## Reinstalar o traefik (apaga acme.json e refaz SSL)
+        traefik.reinstall)
+            traefik.reinstall
+            ;;
+
+        ## Verifica certificados SSL emitidos pelo Traefik
+        traefik.check)
+            traefik.check
             ;;
 
         ## Traduzir emails do Chatwoot
