@@ -3048,6 +3048,32 @@ stack_editavel(){
     erro_output=$(mktemp)
     response_output=$(mktemp)
 
+    ## Verifica se já existe uma stack com o mesmo nome (de tentativa anterior) e remove
+    EXISTING_STACK_ID=$(curl -k -s -X GET -H "Authorization: Bearer $TOKEN" \
+        "https://$PORTAINER_URL/api/stacks" \
+        | jq -r --arg name "$STACK_NAME" '.[] | select(.Name == $name) | .Id' | head -n1)
+
+    if [ -n "$EXISTING_STACK_ID" ] && [ "$EXISTING_STACK_ID" != "null" ]; then
+        echo -e "$bege[ AVISO ]$reset Stack '$STACK_NAME' já existe (ID: $EXISTING_STACK_ID). Removendo antes de recriar..."
+        del_code=$(curl -k -s -o /dev/null -w "%{http_code}" -X DELETE \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://$PORTAINER_URL/api/stacks/$EXISTING_STACK_ID?endpointId=$ENDPOINT_ID")
+        if [ "$del_code" = "204" ] || [ "$del_code" = "200" ]; then
+            echo -e "[ OK ] Stack antiga removida. Aguardando containers finalizarem..."
+            # Aguarda os serviços do swarm sumirem antes de recriar
+            for i in $(seq 1 20); do
+                running=$(docker stack services "$STACK_NAME" 2>/dev/null | wc -l)
+                [ "$running" -le 1 ] && break
+                sleep 2
+            done
+            sleep 3
+        else
+            echo -e "[ AVISO ] Não foi possível remover via API (HTTP $del_code). Tentando via docker stack rm..."
+            docker stack rm "$STACK_NAME" >/dev/null 2>&1 || true
+            sleep 8
+        fi
+    fi
+
     ## Fazendo deploy da stack pelo portainer
     http_code=$(curl -s -o "$response_output" -w "%{http_code}" -k -X POST \
     -H "Authorization: Bearer $TOKEN" \
