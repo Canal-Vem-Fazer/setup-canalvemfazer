@@ -6188,8 +6188,6 @@ services:
       - REACT_APP_BACKEND_URL=https://$url_whaticket_back
       - BACKEND_URL=https://$url_whaticket_back
       - FRONTEND_URL=https://$url_whaticket_front
-      - PORT=3000
-      - NODE_ENV=production
       - TZ=America/Sao_Paulo
     deploy:
       mode: replicated
@@ -6208,7 +6206,7 @@ services:
         - traefik.http.routers.whaticket${1:+_$1}_frontend.tls.certresolver=letsencryptresolver
         - traefik.http.routers.whaticket${1:+_$1}_frontend.priority=1
         - traefik.http.routers.whaticket${1:+_$1}_frontend.service=whaticket${1:+_$1}_frontend
-        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.server.port=3000
+        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.server.port=80
         - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.passHostHeader=true
 
 ## --------------------------- WHATICKET --------------------------- ##
