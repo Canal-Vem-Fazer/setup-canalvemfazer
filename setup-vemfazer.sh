@@ -2260,9 +2260,9 @@ menu_instalador_pg_1(){
     echo -e ""
     echo -e "${verde}>>> ${amarelo}[ 138 ]${reset} - ${branco}Langfuse ${verde}[1/1]${reset}     ${amarelo}[ 139 ]${reset} - ${branco}Metabase ${verde}[1/1]${reset}                                ${verde}<<<${reset}"
     echo -e ""
-    echo -e "${verde}>>> ${amarelo}[ 99 ]${reset} ou ${amarelo}STATUS${reset} - ${branco}Status / Gerenciar instalações (reiniciar, logs, desinstalar)${reset}                  ${verde}<<<${reset}"
-    echo -e "${verde}>>> ${amarelo}[ 98 ]${reset} ou ${amarelo}RESET${reset}  - ${branco}Reset TOTAL da VPS (apaga tudo para instalar do zero)${reset}                          ${verde}<<<${reset}"
-    echo -e "${verde}>>> ${amarelo}[ 97 ]${reset} ou ${amarelo}CREDENCIAIS${reset} - ${branco}Ver credenciais de todas as instalações realizadas${reset}                  ${verde}<<<${reset}"
+    echo -e "${verde}>>> ${amarelo}[ 999 ]${reset} ou ${amarelo}STATUS${reset} - ${branco}Status / Gerenciar instalações (reiniciar, logs, desinstalar)${reset}                 ${verde}<<<${reset}"
+    echo -e "${verde}>>> ${amarelo}[ 998 ]${reset} ou ${amarelo}RESET${reset}  - ${branco}Reset TOTAL da VPS (apaga tudo para instalar do zero)${reset}                         ${verde}<<<${reset}"
+    echo -e "${verde}>>> ${amarelo}[ 997 ]${reset} ou ${amarelo}CREDENCIAIS${reset} - ${branco}Ver credenciais de todas as instalações realizadas${reset}                 ${verde}<<<${reset}"
     echo -e ""
     echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R2${branco} para ir para pagina 2 -->${reset}"
     echo -e ""
@@ -6190,23 +6190,6 @@ services:
       - BACKEND_URL=https://$url_whaticket_back
       - FRONTEND_URL=https://$url_whaticket_front
       - TZ=America/Sao_Paulo
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        set -e
-        ROOT_DIR=/usr/share/nginx/html
-        [ -d "\$ROOT_DIR" ] || ROOT_DIR=/app/build
-        [ -d "\$ROOT_DIR" ] || ROOT_DIR=/app/dist
-        echo "Patching frontend with REACT_APP_BACKEND_URL=\$REACT_APP_BACKEND_URL in \$ROOT_DIR"
-        find "\$ROOT_DIR" -type f \\( -name "*.js" -o -name "*.html" \\) -exec sed -i "s|http://localhost:8080|\$REACT_APP_BACKEND_URL|g; s|https://localhost:8080|\$REACT_APP_BACKEND_URL|g; s|http://localhost:3000|\$REACT_APP_FRONTEND_URL|g" {} +
-        if command -v nginx >/dev/null 2>&1; then
-          exec nginx -g 'daemon off;'
-        elif [ -f /app/server.js ]; then
-          exec node /app/server.js
-        else
-          exec npm start
-        fi
     deploy:
       mode: replicated
       replicas: 1
@@ -44675,15 +44658,15 @@ while true; do
             ferramenta_testeemail
             ;;
 
-        status|STATUS|gerenciar|GERENCIAR|99)
+        status|STATUS|gerenciar|GERENCIAR|999)
             gerenciar_instalacoes
             ;;
 
-        reset|RESET|limpar|LIMPAR|98)
+        reset|RESET|limpar|LIMPAR|998)
             reset_vps_completo
             ;;
 
-        credenciais|CREDENCIAIS|cred|CRED|senhas|SENHAS|97)
+        credenciais|CREDENCIAIS|cred|CRED|senhas|SENHAS|997)
             ver_credenciais
             ;;
 
