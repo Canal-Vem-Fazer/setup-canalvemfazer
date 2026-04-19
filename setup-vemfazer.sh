@@ -2403,31 +2403,52 @@ recursos() {
     vcpu_requerido=$1
     ram_requerido=$2
 
-    # Obtendo a quantidade de vCPUs e GB de RAM disponíveis
-    if command -v neofetch >/dev/null 2>&1; then
-        # Debian 11
-        vcpu_disponivel=$(neofetch --stdout | grep "CPU" | grep -oP '\(\d+\)' | tr -d '()')
-        ram_disponivel=$(neofetch --stdout | grep "Memory" | awk '{print $4}' | tr -d 'MiB' | awk '{print int($1/1024 + 0.5)}')
-    elif command -v fastfetch >/dev/null 2>&1; then
-        # Debian 13 (usa saída JSON do fastfetch)
-        vcpu_disponivel=$(fastfetch --json | jq '.cpu.cores')
-        ram_disponivel=$(fastfetch --json | jq '.memory.total / 1024 / 1024' | awk '{print int($1+0.5)}')
-    else
-        echo "Erro: nem neofetch nem fastfetch encontrados. Instale um deles para continuar."
-        return 1
+    vcpu_disponivel=0
+    ram_disponivel=0
+
+    # vCPU via nproc (sempre disponível em coreutils)
+    if command -v nproc >/dev/null 2>&1; then
+        vcpu_disponivel=$(nproc 2>/dev/null || echo 0)
     fi
+
+    # RAM em GB via /proc/meminfo (kB -> GB, arredondado)
+    if [ -r /proc/meminfo ]; then
+        ram_kb=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
+        if [ -n "$ram_kb" ] && [ "$ram_kb" -gt 0 ] 2>/dev/null; then
+            ram_disponivel=$(awk -v k="$ram_kb" 'BEGIN { printf "%d", (k/1024/1024)+0.5 }')
+        fi
+    fi
+
+    # Fallback opcional: neofetch / fastfetch (compatibilidade)
+    if [ "$vcpu_disponivel" = "0" ] || [ -z "$vcpu_disponivel" ]; then
+        if command -v neofetch >/dev/null 2>&1; then
+            vcpu_disponivel=$(neofetch --stdout | grep "CPU" | grep -oP '\(\d+\)' | tr -d '()')
+        elif command -v fastfetch >/dev/null 2>&1; then
+            vcpu_disponivel=$(fastfetch --json 2>/dev/null | jq '.cpu.cores' 2>/dev/null)
+        fi
+    fi
+    if [ "$ram_disponivel" = "0" ] || [ -z "$ram_disponivel" ]; then
+        if command -v neofetch >/dev/null 2>&1; then
+            ram_disponivel=$(neofetch --stdout | grep "Memory" | awk '{print $4}' | tr -d 'MiB' | awk '{print int($1/1024 + 0.5)}')
+        elif command -v fastfetch >/dev/null 2>&1; then
+            ram_disponivel=$(fastfetch --json 2>/dev/null | jq '.memory.total / 1024 / 1024' 2>/dev/null | awk '{print int($1+0.5)}')
+        fi
+    fi
+
+    # Sanitiza valores
+    [[ "$vcpu_disponivel" =~ ^[0-9]+$ ]] || vcpu_disponivel=0
+    [[ "$ram_disponivel" =~ ^[0-9]+$ ]] || ram_disponivel=0
 
     # Comparando os recursos
     if [[ $vcpu_disponivel -ge $vcpu_requerido && $ram_disponivel -ge $ram_requerido ]]; then
-        echo "ok"
         clear
         return 0
     else
         clear
-        erro_msg
+        erro_msg 2>/dev/null || true
         echo -e "Ops, parece que o seu servidor não atende os requisitos mínimos dessa aplicação."
-        echo -e "Esse serviço precisa de \e[32m$vcpu_requerido vCPU${reset} e \e[32m$ram_requerido Gb RAM${reset}."
-        echo -e "Atualmente, seu servidor possui apenas: \e[32m$vcpu_disponivel vCPU${reset} com \e[32m$ram_disponivel Gb RAM${reset}."
+        echo -e "Esse serviço precisa de \e[32m$vcpu_requerido vCPU\e[0m e \e[32m$ram_requerido Gb RAM\e[0m."
+        echo -e "Atualmente, seu servidor possui apenas: \e[32m$vcpu_disponivel vCPU\e[0m com \e[32m$ram_disponivel Gb RAM\e[0m."
         echo -e "Você pode ter problemas de desempenho, falhas na execução ou problemas na instalação."
 
         echo ""
@@ -2436,10 +2457,8 @@ recursos() {
             return 0
         else
             echo ""
-            echo "Voltando ao menu em 10 segundos."
-            sleep 10
-            nome_menu
-            menu_instalador
+            echo "Voltando ao menu em 3 segundos."
+            sleep 3
             return 1
         fi
     fi
