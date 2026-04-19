@@ -2523,7 +2523,9 @@ gerenciar_instalacoes() {
         done
         echo ""
         echo -e "$amarelo  ---------------------------------------------------------------\e[0m"
-        echo -e "  Digite o $amarelo[Nº]\e[0m da stack para gerenciar, ou $amarelo[M]\e[0m para voltar ao menu principal."
+        echo -e "  Digite o $amarelo[Nº]\e[0m da stack para gerenciar."
+        echo -e "  $amarelo[X]\e[0m Reset TOTAL da VPS (apaga tudo para instalar do zero)"
+        echo -e "  $amarelo[M]\e[0m Voltar ao menu principal"
         echo -en "\e[33mEscolha: \e[0m"
         read -r esc
         esc=$(echo "$esc" | tr '[:lower:]' '[:upper:]')
@@ -2531,6 +2533,11 @@ gerenciar_instalacoes() {
         if [[ "$esc" == "M" || -z "$esc" ]]; then
             clear
             return
+        fi
+
+        if [[ "$esc" == "X" ]]; then
+            reset_vps_completo
+            continue
         fi
 
         if ! [[ "$esc" =~ ^[0-9]+$ ]] || [ "$esc" -lt 1 ] || [ "$esc" -gt ${#stacks[@]} ]; then
@@ -2593,6 +2600,90 @@ gerenciar_instalacoes() {
             esac
         done
     done
+}
+
+## RESET TOTAL DA VPS — remove tudo do Docker para uma instalação do zero
+## sem precisar formatar o servidor. Mantém o sistema operacional intacto.
+reset_vps_completo() {
+    clear
+    echo -e "\e[31m===================================================================================================\e[0m"
+    echo -e "\e[31m                            ⚠️  RESET TOTAL DA VPS  ⚠️                                       \e[0m"
+    echo -e "\e[31m===================================================================================================\e[0m"
+    echo ""
+    echo -e "\e[33mEsta opção vai REMOVER PERMANENTEMENTE da sua VPS:\e[0m"
+    echo -e "  • Todas as stacks do Docker Swarm (Traefik, Portainer, e todas as ferramentas)"
+    echo -e "  • Todos os containers, imagens, volumes e redes do Docker"
+    echo -e "  • Todos os dados gravados em /root/dados_vps (senhas, tokens, configurações)"
+    echo -e "  • O modo Swarm será desativado (docker swarm leave --force)"
+    echo ""
+    echo -e "\e[32mO sistema operacional, SSH e o próprio Docker continuam instalados.\e[0m"
+    echo -e "\e[32mApós o reset você pode rodar a opção [01] novamente para instalar tudo do zero.\e[0m"
+    echo ""
+    echo -e "\e[31m⚠️  ESTA AÇÃO NÃO PODE SER DESFEITA. Faça backup antes se necessário.\e[0m"
+    echo ""
+    echo -en "\e[33mPara confirmar, digite exatamente \e[31mRESET\e[33m (ou qualquer outra coisa para cancelar): \e[0m"
+    read -r conf1
+    if [ "$conf1" != "RESET" ]; then
+        echo -e "\e[32mOperação cancelada.\e[0m"; sleep 2; return
+    fi
+    echo -en "\e[31mTem certeza absoluta? (digite SIM para prosseguir): \e[0m"
+    read -r conf2
+    if [ "$conf2" != "SIM" ]; then
+        echo -e "\e[32mOperação cancelada.\e[0m"; sleep 2; return
+    fi
+
+    echo ""
+    echo -e "\e[33m=== Iniciando reset total da VPS ===\e[0m"
+    echo ""
+
+    if command -v docker >/dev/null 2>&1; then
+        echo -e "\e[33m[1/7] Removendo todas as stacks do Swarm...\e[0m"
+        for stk in $(docker stack ls --format "{{.Name}}" 2>/dev/null); do
+            echo "       - removendo stack: $stk"
+            docker stack rm "$stk" >/dev/null 2>&1
+        done
+        sleep 5
+
+        echo -e "\e[33m[2/7] Parando e removendo containers restantes...\e[0m"
+        docker ps -aq 2>/dev/null | xargs -r docker rm -f >/dev/null 2>&1
+
+        echo -e "\e[33m[3/7] Removendo todos os serviços Docker...\e[0m"
+        docker service ls -q 2>/dev/null | xargs -r docker service rm >/dev/null 2>&1
+
+        echo -e "\e[33m[4/7] Removendo todos os volumes (dados das aplicações)...\e[0m"
+        docker volume ls -q 2>/dev/null | xargs -r docker volume rm -f >/dev/null 2>&1
+
+        echo -e "\e[33m[5/7] Removendo redes customizadas...\e[0m"
+        for net in $(docker network ls --filter "type=custom" --format "{{.Name}}" 2>/dev/null); do
+            docker network rm "$net" >/dev/null 2>&1
+        done
+
+        echo -e "\e[33m[6/7] Removendo todas as imagens Docker...\e[0m"
+        docker images -q 2>/dev/null | xargs -r docker rmi -f >/dev/null 2>&1
+        docker system prune -af --volumes >/dev/null 2>&1
+
+        echo -e "\e[33m[7/7] Saindo do modo Swarm...\e[0m"
+        docker swarm leave --force >/dev/null 2>&1
+    else
+        echo -e "\e[33mDocker não encontrado — pulando limpeza de containers.\e[0m"
+    fi
+
+    echo ""
+    echo -e "\e[33m=== Limpando dados persistentes do instalador ===\e[0m"
+    if [ -d /root/dados_vps ]; then
+        rm -rf /root/dados_vps
+        echo "  [ OK ] /root/dados_vps removido"
+    fi
+    rm -f /root/stack_*.yaml /root/*.yaml 2>/dev/null
+    rm -rf /opt/traefik /opt/portainer 2>/dev/null
+
+    echo ""
+    echo -e "\e[32m===================================================================================================\e[0m"
+    echo -e "\e[32m   ✓ RESET CONCLUÍDO. A VPS está pronta para uma instalação do zero.                          \e[0m"
+    echo -e "\e[32m   Execute novamente o instalador e escolha a opção [01] Traefik & Portainer.                 \e[0m"
+    echo -e "\e[32m===================================================================================================\e[0m"
+    echo ""
+    read -r -p "Pressione ENTER para voltar ao menu principal..." _
 }
 
 # Cobre todos os comandos externos usados pelo instalador.
@@ -44455,6 +44546,10 @@ while true; do
 
         status|STATUS|gerenciar|GERENCIAR|99)
             gerenciar_instalacoes
+            ;;
+
+        reset|RESET|limpar|LIMPAR|98)
+            reset_vps_completo
             ;;
 
         1|01|portainer|traefik|PORTAINER|TRAEFIK)
