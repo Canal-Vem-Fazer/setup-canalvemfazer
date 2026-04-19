@@ -2262,6 +2262,7 @@ menu_instalador_pg_1(){
     echo -e ""
     echo -e "${verde}>>> ${amarelo}[ 99 ]${reset} ou ${amarelo}STATUS${reset} - ${branco}Status / Gerenciar instalações (reiniciar, logs, desinstalar)${reset}                  ${verde}<<<${reset}"
     echo -e "${verde}>>> ${amarelo}[ 98 ]${reset} ou ${amarelo}RESET${reset}  - ${branco}Reset TOTAL da VPS (apaga tudo para instalar do zero)${reset}                          ${verde}<<<${reset}"
+    echo -e "${verde}>>> ${amarelo}[ 97 ]${reset} ou ${amarelo}CREDENCIAIS${reset} - ${branco}Ver credenciais de todas as instalações realizadas${reset}                  ${verde}<<<${reset}"
     echo -e ""
     echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R2${branco} para ir para pagina 2 -->${reset}"
     echo -e ""
@@ -2600,6 +2601,102 @@ gerenciar_instalacoes() {
                     ;;
             esac
         done
+    done
+}
+
+## VER CREDENCIAIS — exibe todas as credenciais salvas em /root/dados_vps
+ver_credenciais() {
+    local arq nome opcao_cred
+    while true; do
+        clear
+        echo -e "\e[34m===================================================================================================\e[0m"
+        echo -e "\e[97m                          CREDENCIAIS DAS INSTALAÇÕES                                          \e[0m"
+        echo -e "\e[34m===================================================================================================\e[0m"
+        echo ""
+
+        if [ ! -d /root/dados_vps ]; then
+            echo -e "\e[33m  Nenhuma credencial encontrada. A pasta /root/dados_vps ainda não existe.\e[0m"
+            echo ""
+            echo -e "\e[36m  Pressione ENTER para voltar ao menu...\e[0m"
+            read -r
+            return
+        fi
+
+        mapfile -t arquivos < <(find /root/dados_vps -maxdepth 1 -type f -name "dados_*" 2>/dev/null | sort)
+
+        if [ ${#arquivos[@]} -eq 0 ]; then
+            echo -e "\e[33m  Nenhum arquivo de credencial encontrado em /root/dados_vps.\e[0m"
+            echo ""
+            echo -e "\e[36m  Pressione ENTER para voltar ao menu...\e[0m"
+            read -r
+            return
+        fi
+
+        echo -e "\e[36m  Selecione a aplicação para ver as credenciais:\e[0m"
+        echo ""
+        printf "  \e[33m%-4s\e[0m %-40s\n" "Nº" "APLICAÇÃO"
+        echo -e "  \e[34m---------------------------------------------------\e[0m"
+
+        local i=1
+        for arq in "${arquivos[@]}"; do
+            nome=$(basename "$arq" | sed 's/^dados_//')
+            printf "  \e[33m%-4s\e[0m %-40s\n" "[$i]" "$nome"
+            i=$((i+1))
+        done
+
+        echo ""
+        echo -e "  \e[33m[ T ]\e[0m - Mostrar TODAS as credenciais"
+        echo -e "  \e[33m[ 0 ]\e[0m - Voltar ao menu principal"
+        echo ""
+        echo -en "\e[36m  Escolha uma opção: \e[0m"
+        read -r opcao_cred
+
+        case "$opcao_cred" in
+            0|"")
+                return
+                ;;
+            t|T)
+                clear
+                echo -e "\e[34m===================================================================================================\e[0m"
+                echo -e "\e[97m                          TODAS AS CREDENCIAIS                                                  \e[0m"
+                echo -e "\e[34m===================================================================================================\e[0m"
+                for arq in "${arquivos[@]}"; do
+                    nome=$(basename "$arq" | sed 's/^dados_//')
+                    echo ""
+                    echo -e "\e[33m▼ $nome \e[34m($arq)\e[0m"
+                    echo -e "\e[34m---------------------------------------------------------------------------------------------------\e[0m"
+                    cat "$arq"
+                    echo -e "\e[34m---------------------------------------------------------------------------------------------------\e[0m"
+                done
+                echo ""
+                echo -e "\e[36m  Pressione ENTER para continuar...\e[0m"
+                read -r
+                ;;
+            *[!0-9]*|"")
+                echo -e "\e[31m  Opção inválida.\e[0m"
+                sleep 2
+                ;;
+            *)
+                if [ "$opcao_cred" -ge 1 ] && [ "$opcao_cred" -le ${#arquivos[@]} ]; then
+                    arq="${arquivos[$((opcao_cred-1))]}"
+                    nome=$(basename "$arq" | sed 's/^dados_//')
+                    clear
+                    echo -e "\e[34m===================================================================================================\e[0m"
+                    echo -e "\e[97m  CREDENCIAIS: $nome\e[0m"
+                    echo -e "\e[34m  Arquivo: $arq\e[0m"
+                    echo -e "\e[34m===================================================================================================\e[0m"
+                    echo ""
+                    cat "$arq"
+                    echo ""
+                    echo -e "\e[34m===================================================================================================\e[0m"
+                    echo -e "\e[36m  Pressione ENTER para voltar à lista...\e[0m"
+                    read -r
+                else
+                    echo -e "\e[31m  Opção inválida.\e[0m"
+                    sleep 2
+                fi
+                ;;
+        esac
     done
 }
 
@@ -44558,6 +44655,10 @@ while true; do
 
         reset|RESET|limpar|LIMPAR|98)
             reset_vps_completo
+            ;;
+
+        credenciais|CREDENCIAIS|cred|CRED|senhas|SENHAS|97)
+            ver_credenciais
             ;;
 
         1|01|portainer|traefik|PORTAINER|TRAEFIK)
