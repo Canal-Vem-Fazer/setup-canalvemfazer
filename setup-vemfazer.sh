@@ -5,7 +5,7 @@
 ## // ## // ## // ## // ## // ## // ## // ## //## // ## // ## // ## // ## // ## // ## // ## // ##
 
 versao() {
-echo -e "                                   \e[97mVersão do Setup Vem Fazer: \e[32mv. 2.8.0\e[0m                                  "
+echo -e "                                   \e[97mVersão do Setup Vem Fazer: \e[32mv. 1.0\e[0m                                    "
 echo -e "\e[32mchat.whatsapp.com/I6LVQeb13Cp7l39fA2cY0l      \e[97m<----- Grupos no WhatsApp ----->     \e[32myoutube.com/@VemFazer\e[0m"
 }
 
@@ -389,6 +389,21 @@ nome_chatwoot(){
     echo -e "$branco              ██║     ██╔══██║██╔══██║   ██║   ██║███╗██║██║   ██║██║   ██║   ██║   \e[0m"
     echo -e "$branco              ╚██████╗██║  ██║██║  ██║   ██║   ╚███╔███╔╝╚██████╔╝╚██████╔╝   ██║   \e[0m"
     echo -e "$branco               ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝    ╚══╝╚══╝  ╚═════╝  ╚═════╝    ╚═╝   \e[0m"
+    echo ""
+    echo ""
+}
+
+## Titulo Whaticket [138]
+
+nome_whaticket(){
+    clear
+    echo ""
+    echo -e "$branco  ██╗    ██╗██╗  ██╗ █████╗ ████████╗██╗ ██████╗██╗  ██╗███████╗████████╗\e[0m"
+    echo -e "$branco  ██║    ██║██║  ██║██╔══██╗╚══██╔══╝██║██╔════╝██║ ██╔╝██╔════╝╚══██╔══╝\e[0m"
+    echo -e "$branco  ██║ █╗ ██║███████║███████║   ██║   ██║██║     █████╔╝ █████╗     ██║   \e[0m"
+    echo -e "$branco  ██║███╗██║██╔══██║██╔══██║   ██║   ██║██║     ██╔═██╗ ██╔══╝     ██║   \e[0m"
+    echo -e "$branco  ╚███╔███╔╝██║  ██║██║  ██║   ██║   ██║╚██████╗██║  ██╗███████╗   ██║   \e[0m"
+    echo -e "$branco   ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝   ╚═╝   \e[0m"
     echo ""
     echo ""
 }
@@ -2243,7 +2258,9 @@ menu_instalador_pg_1(){
     echo -e "${amarelo}[ 21 ]${reset} - ${branco}Formbricks ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 44 ]${reset} - ${branco}HumHub ${verde}[1/1] ${reset}"
     echo -e "${amarelo}[ 22 ]${reset} - ${branco}NocoDB ${verde}[1/1]${reset}                           ${verde}| ${reset}  ${amarelo}[ 45 ]${reset} - ${branco}Yourls ${verde}[1/1] ${reset}"
     echo -e ""
-    echo -e "${branco}<-- Digite ${amarelo}P1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}P2${branco} para ir para pagina 2 -->${reset}"
+    echo -e "${verde}>>> ${amarelo}[ 138 ]${reset} - ${branco}Whaticket Community ${verde}[NOVO]${reset}                                                ${verde}<<<${reset}"
+    echo -e ""
+    echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R2${branco} para ir para pagina 2 -->${reset}"
     echo -e ""
 }
 
@@ -2272,7 +2289,7 @@ menu_instalador_pg_2(){
     echo -e "${amarelo}[ 67 ]${reset} - ${branco}Bolt ${verde}[2/4]${reset}                             ${verde}| ${reset}  ${amarelo}[ 90 ]${reset} - ${branco}AstraCampaign ${verde}[1/1]${reset}"
     echo -e "${amarelo}[ 68 ]${reset} - ${branco}WiseMapping ${verde}[1/1]${reset}                      ${verde}| ${reset}  ${amarelo}[ 91 ]${reset} - ${branco}Duplicati ${verde}[1/1]${reset}"
     echo -e ""
-    echo -e "${branco}<-- Digite ${amarelo}P1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}P3${branco} para ir para pagina 3 -->${reset}"
+    echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R3${branco} para ir para pagina 3 -->${reset}"
     echo -e ""
 }
 
@@ -2301,7 +2318,7 @@ menu_instalador_pg_3(){
     echo -e "${amarelo}[ 113 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 136 ]${reset} - ${branco}EM BREVE...${reset}"
     echo -e "${amarelo}[ 114 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 137 ]${reset} - ${branco}EM BREVE...${reset}"
     echo -e ""
-    echo -e "${branco}<-- Digite ${amarelo}P2 ${branco}para ir para pagina 2             ${amarelo}|${branco}              Digite ${amarelo}P3${branco} para ir para pagina 3 -->${reset}"
+    echo -e "${branco}<-- Digite ${amarelo}R2 ${branco}para ir para pagina 2             ${amarelo}|${branco}              Digite ${amarelo}R3${branco} para ir para pagina 3 -->${reset}"
     echo -e ""
 }
 
@@ -2346,7 +2363,7 @@ menu_comandos(){
   echo -e "${branco} • ${amarelo}limpar${reset} - ${branco}Limpa Logs, volumes e imagens do Docker não usadas${reset}"
 
   echo -e ""
-  echo -e "${branco}<-- Digite ${amarelo}P1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}P2${branco} para ir para pagina 2 -->${reset}"
+  echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R2${branco} para ir para pagina 2 -->${reset}"
   echo -e ""
 }
 
@@ -5510,6 +5527,351 @@ requisitar_outra_instalacao
 ## ██║     ██╔══██║██╔══██║   ██║   ██║███╗██║██║   ██║██║   ██║   ██║   
 ## ╚██████╗██║  ██║██║  ██║   ██║   ╚███╔███╔╝╚██████╔╝╚██████╔╝   ██║   
 ##  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝    ╚══╝╚══╝  ╚═════╝  ╚═════╝    ╚═╝   
+
+## ██╗    ██╗██╗  ██╗ █████╗ ████████╗██╗ ██████╗██╗  ██╗███████╗████████╗
+## ██║    ██║██║  ██║██╔══██╗╚══██╔══╝██║██╔════╝██║ ██╔╝██╔════╝╚══██╔══╝
+## ██║ █╗ ██║███████║███████║   ██║   ██║██║     █████╔╝ █████╗     ██║
+## ██║███╗██║██╔══██║██╔══██║   ██║   ██║██║     ██╔═██╗ ██╔══╝     ██║
+## ╚███╔███╔╝██║  ██║██║  ██║   ██║   ██║╚██████╗██║  ██╗███████╗   ██║
+##  ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝   ╚═╝
+
+ferramenta_whaticket() {
+
+## Verifica os recursos
+recursos 2 2 && continue || return
+
+## Limpa o terminal
+clear
+
+## Ativa a função dados para pegar os dados da vps
+dados
+
+## Mostra o nome da aplicação
+nome_whaticket
+
+## Mostra mensagem para preencher informações
+preencha_as_info
+
+## Inicia um Loop até os dados estarem certos
+while true; do
+
+    ## Pergunta o Dominio do Backend
+    echo -e "\e[97mPasso$amarelo 1/3\e[0m"
+    echo -en "\e[33mDigite o Dominio do BACKEND do Whaticket (ex: api.whaticket.vemfazer.com): \e[0m" && read -r url_whaticket_back
+    echo ""
+
+    ## Pergunta o Dominio do Frontend
+    echo -e "\e[97mPasso$amarelo 2/3\e[0m"
+    echo -en "\e[33mDigite o Dominio do FRONTEND do Whaticket (ex: whaticket.vemfazer.com): \e[0m" && read -r url_whaticket_front
+    echo ""
+
+    ## Pergunta o email do admin
+    echo -e "\e[97mPasso$amarelo 3/3\e[0m"
+    echo -en "\e[33mDigite o Email do Admin do Whaticket (ex: admin@vemfazer.com): \e[0m" && read -r email_admin_whaticket
+    echo ""
+
+    ## Limpa o terminal
+    clear
+
+    ## Mostra o nome da aplicação
+    nome_whaticket
+
+    ## Mostra mensagem para verificar as informações
+    conferindo_as_info
+
+    echo -e "\e[33mDominio Backend:\e[97m https://$url_whaticket_back\e[0m"
+    echo ""
+    echo -e "\e[33mDominio Frontend:\e[97m https://$url_whaticket_front\e[0m"
+    echo ""
+    echo -e "\e[33mEmail do Admin:\e[97m $email_admin_whaticket\e[0m"
+    echo ""
+
+    ## Pergunta se as respostas estão corretas
+    read -p "As respostas estão corretas? (Y/N): " confirmacao
+    if [ "$confirmacao" = "Y" ] || [ "$confirmacao" = "y" ]; then
+        clear
+        instalando_msg
+        break
+    else
+        clear
+        nome_whaticket
+        preencha_as_info
+    fi
+done
+
+## Mensagem de Passo
+echo -e "\e[97m• INICIANDO A INSTALAÇÃO DO WHATICKET \e[33m[1/4]\e[0m"
+echo ""
+sleep 1
+
+telemetria Whaticket iniciado
+
+## Ativa a função dados para pegar os dados da vps
+dados
+
+## Gera senhas aleatórias para MySQL e JWT
+senha_mysql_whaticket=$(openssl rand -hex 16)
+jwt_secret_whaticket=$(openssl rand -hex 32)
+jwt_refresh_whaticket=$(openssl rand -hex 32)
+
+## Mensagem de Passo
+echo -e "\e[97m• CRIANDO STACK DO WHATICKET \e[33m[2/4]\e[0m"
+echo ""
+sleep 1
+
+## Criando a stack whaticket.yaml
+cat > whaticket${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- WHATICKET --------------------------- ##
+
+  whaticket${1:+_$1}_mysql:
+    image: mariadb:10.6
+    command: --innodb-flush-log-at-trx-commit=2 --innodb-buffer-pool-size=512M --max_connections=500
+    environment:
+      - MYSQL_ROOT_PASSWORD=$senha_mysql_whaticket
+      - MYSQL_DATABASE=whaticket
+      - MYSQL_USER=whaticket
+      - MYSQL_PASSWORD=$senha_mysql_whaticket
+      - TZ=America/Sao_Paulo
+    volumes:
+      - whaticket${1:+_$1}_mysql:/var/lib/mysql
+    networks:
+      - $nome_rede_interna
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+## --------------------------- WHATICKET --------------------------- ##
+
+  whaticket${1:+_$1}_redis:
+    image: redis:latest
+    command: ["redis-server", "--appendonly", "yes", "--port", "6379"]
+    volumes:
+      - whaticket${1:+_$1}_redis:/data
+    networks:
+      - $nome_rede_interna
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+## --------------------------- WHATICKET --------------------------- ##
+
+  whaticket${1:+_$1}_backend:
+    image: ghcr.io/canove/whaticket-community-backend:master
+    networks:
+      - $nome_rede_interna
+    environment:
+      - NODE_ENV=production
+      - BACKEND_URL=https://$url_whaticket_back
+      - FRONTEND_URL=https://$url_whaticket_front
+      - PROXY_PORT=443
+      - PORT=8080
+      - DB_DIALECT=mysql
+      - DB_HOST=whaticket${1:+_$1}_mysql
+      - DB_PORT=3306
+      - DB_USER=whaticket
+      - DB_PASS=$senha_mysql_whaticket
+      - DB_NAME=whaticket
+      - JWT_SECRET=$jwt_secret_whaticket
+      - JWT_REFRESH_SECRET=$jwt_refresh_whaticket
+      - REDIS_URI=redis://whaticket${1:+_$1}_redis:6379
+      - REDIS_OPT_LIMITER_MAX=1
+      - REDIS_OPT_LIMITER_DURATION=3000
+      - USER_LIMIT=10000
+      - CONNECTIONS_LIMIT=100000
+      - CLOSED_SEND_BY_ME=true
+      - TZ=America/Sao_Paulo
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.whaticket${1:+_$1}_backend.rule=Host(\`$url_whaticket_back\`)
+        - traefik.http.routers.whaticket${1:+_$1}_backend.entrypoints=websecure
+        - traefik.http.routers.whaticket${1:+_$1}_backend.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.whaticket${1:+_$1}_backend.priority=1
+        - traefik.http.routers.whaticket${1:+_$1}_backend.service=whaticket${1:+_$1}_backend
+        - traefik.http.services.whaticket${1:+_$1}_backend.loadbalancer.server.port=8080
+        - traefik.http.services.whaticket${1:+_$1}_backend.loadbalancer.passHostHeader=true
+
+## --------------------------- WHATICKET --------------------------- ##
+
+  whaticket${1:+_$1}_frontend:
+    image: ghcr.io/canove/whaticket-community-frontend:master
+    networks:
+      - $nome_rede_interna
+    environment:
+      - BACKEND_URL=https://$url_whaticket_back
+      - FRONTEND_URL=https://$url_whaticket_front
+    ## Substitui em runtime a URL do backend nos JS estáticos buildados
+    command: >
+      sh -c "find /usr/share/nginx/html -type f \\( -name '*.js' -o -name '*.html' \\) -exec sed -i 's|http://localhost:8080|https://$url_whaticket_back|g; s|https://api.whaticket.com|https://$url_whaticket_back|g' {} + ; nginx -g 'daemon off;'"
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.whaticket${1:+_$1}_frontend.rule=Host(\`$url_whaticket_front\`)
+        - traefik.http.routers.whaticket${1:+_$1}_frontend.entrypoints=websecure
+        - traefik.http.routers.whaticket${1:+_$1}_frontend.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.whaticket${1:+_$1}_frontend.priority=1
+        - traefik.http.routers.whaticket${1:+_$1}_frontend.service=whaticket${1:+_$1}_frontend
+        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.server.port=80
+        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.passHostHeader=true
+
+## --------------------------- WHATICKET --------------------------- ##
+
+volumes:
+  whaticket${1:+_$1}_mysql:
+    external: true
+    name: whaticket${1:+_$1}_mysql
+  whaticket${1:+_$1}_redis:
+    external: true
+    name: whaticket${1:+_$1}_redis
+
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL
+if [ $? -eq 0 ]; then
+    echo "1/3 - [ OK ] - Criando Stack"
+else
+    echo "1/3 - [ OFF ] - Criando Stack"
+    echo "Não foi possivel criar a stack do Whaticket"
+fi
+STACK_NAME="whaticket${1:+_$1}"
+stack_editavel
+
+## Mensagem de Passo
+echo -e "\e[97m• BAIXANDO IMAGENS DO WHATICKET \e[33m[3/5]\e[0m"
+echo ""
+sleep 1
+
+pull mariadb:10.6 redis:latest ghcr.io/canove/whaticket-community-backend:master ghcr.io/canove/whaticket-community-frontend:master
+
+## Mensagem de Passo
+echo -e "\e[97m• VERIFICANDO SERVIÇO \e[33m[4/5]\e[0m"
+echo ""
+sleep 1
+
+wait_stack whaticket${1:+_$1}_whaticket${1:+_$1}_mysql whaticket${1:+_$1}_whaticket${1:+_$1}_redis whaticket${1:+_$1}_whaticket${1:+_$1}_backend whaticket${1:+_$1}_whaticket${1:+_$1}_frontend
+
+## Mensagem de Passo
+echo -e "\e[97m• MIGRANDO BANCO DE DADOS E CRIANDO USUÁRIO ADMIN \e[33m[5/5]\e[0m"
+echo ""
+sleep 5
+
+## Aguarda o container do backend aparecer e ficar pronto
+back_container_name="whaticket${1:+_$1}_whaticket${1:+_$1}_backend"
+max_wait_time=900
+wait_interval=30
+elapsed_time=0
+
+while [ $elapsed_time -lt $max_wait_time ]; do
+  BACK_CONTAINER_ID=$(docker ps -q --filter "name=$back_container_name")
+  if [ -n "$BACK_CONTAINER_ID" ]; then
+    break
+  fi
+  sleep $wait_interval
+  elapsed_time=$((elapsed_time + wait_interval))
+done
+
+if [ -z "$BACK_CONTAINER_ID" ]; then
+  echo "1/2 - [ OFF ] - Container do backend não encontrado após $max_wait_time segundos."
+else
+  ## Aguarda o MySQL aceitar conexões
+  mysql_container_name="whaticket${1:+_$1}_whaticket${1:+_$1}_mysql"
+  MYSQL_CONTAINER_ID=$(docker ps -q --filter "name=$mysql_container_name")
+  for i in $(seq 1 60); do
+    docker exec "$MYSQL_CONTAINER_ID" mysqladmin ping -uroot -p"$senha_mysql_whaticket" --silent > /dev/null 2>&1 && break
+    sleep 5
+  done
+
+  ## Roda migrations
+  docker exec "$BACK_CONTAINER_ID" npx sequelize db:migrate > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+      echo "1/2 - [ OK ] - Executando: npx sequelize db:migrate"
+  else
+      echo "1/2 - [ OFF ] - Falha em: npx sequelize db:migrate"
+  fi
+
+  ## Roda seeds (cria usuário admin@whaticket.com / admin)
+  docker exec "$BACK_CONTAINER_ID" npx sequelize db:seed:all > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+      echo "2/2 - [ OK ] - Executando: npx sequelize db:seed:all (usuário admin criado)"
+  else
+      echo "2/2 - [ OFF ] - Falha em: npx sequelize db:seed:all"
+  fi
+fi
+
+telemetria Whaticket finalizado
+
+## Salvando informações da instalação dentro de /dados_vps/
+cd dados_vps
+
+cat > dados_whaticket${1:+_$1} <<EOL
+[ WHATICKET ]
+
+Backend (API): https://$url_whaticket_back
+Frontend (Painel): https://$url_whaticket_front
+
+Login Admin (criado automaticamente pelas seeds):
+  Email: admin@whaticket.com
+  Senha: admin
+
+Senha MySQL: $senha_mysql_whaticket
+
+Obs: Crie o usuário admin acessando o frontend (cadastro inicial)
+ou execute as seeds dentro do container backend.
+EOL
+
+cd
+cd
+
+wait_30_sec
+instalado_msg
+guarde_os_dados_msg
+
+echo -e "\e[32m[ WHATICKET ]\e[0m"
+echo ""
+echo -e "\e[97mFrontend:\e[33m https://$url_whaticket_front\e[0m"
+echo ""
+echo -e "\e[97mBackend:\e[33m https://$url_whaticket_back\e[0m"
+echo ""
+echo -e "\e[97mEmail Admin sugerido:\e[33m $email_admin_whaticket\e[0m"
+echo ""
+echo -e "\e[97mSenha MySQL:\e[33m $senha_mysql_whaticket\e[0m"
+
+creditos_msg
+requisitar_outra_instalacao
+}
 
 ferramenta_chatwoot() {
 
@@ -43818,6 +44180,23 @@ while true; do
             ferramenta_traefik_e_portainer
             ;;
 
+        138|whaticket|WHATICKET)
+
+            verificar_stack "whaticket${opcao2:+_$opcao2}" && continue || echo ""
+
+            if verificar_docker_e_portainer_traefik; then
+                ## INICIO TOKEN
+                STACK_NAME="whaticket${opcao2:+_$opcao2}"
+                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
+                    ferramenta_whaticket "$opcao2"
+                else
+                    APP_ORION="ferramenta_whaticket"
+                    verificar_arquivo
+                fi
+                ## FIM TOKEN
+            fi
+            ;;
+
         2|02|chatwoot|CHATWOOT)
 
             verificar_stack "chatwoot${opcao2:+_$opcao2}" && continue || echo ""
@@ -45812,15 +46191,15 @@ while true; do
             quepasa.setup.on
             ;;
 
-        p1|P1)
+        r1|R1)
             menu_instalador="1"
             ;;
 
-        p2|P2)
+        r2|R2)
             menu_instalador="2"
             ;;
         
-        p3|P3)
+        r3|R3)
             menu_instalador="3"
             ;;
 
