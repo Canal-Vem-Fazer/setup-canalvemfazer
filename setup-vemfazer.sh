@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Normalizado para LF (Unix). Não edite via interface web do GitHub no Windows
+# sem garantir o final de linha LF — CRLF quebra a execução em Linux.
+
 ## // ## // ## // ## // ## // ## // ## // ## //## // ## // ## // ## // ## // ## // ## // ## // ##
 ##                                         VEM FAZER                                        ##
 ## // ## // ## // ## // ## // ## // ## // ## //## // ## // ## // ## // ## // ## // ## // ## // ##
