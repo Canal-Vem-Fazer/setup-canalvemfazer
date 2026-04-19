@@ -15,11 +15,13 @@ echo -e "\e[32mchat.whatsapp.com/I6LVQeb13Cp7l39fA2cY0l      \e[97m<----- Grupos
 
 ## Cores do Setup
 
-amarelo="\e[33m"
-verde="\e[32m"
-branco="\e[97m"
-bege="\e[93m"
-vermelho="\e[91m"
+## Paleta Vem Fazer — alinhada ao site canalvemfazer (#4E93FF / #003366)
+## Nomes mantidos por compatibilidade com o restante do script
+amarelo="\e[38;5;39m"    # azul vibrante (#4E93FF approx) — números [ 00 ]
+verde="\e[38;5;81m"      # azul claro/ciano — separadores e tags [1/1]
+branco="\e[97m"          # branco puro — nomes das ferramentas
+bege="\e[38;5;117m"      # azul pastel — destaques
+vermelho="\e[38;5;203m"  # coral suave — alertas / OFF
 reset="\e[0m"
 
 ## // ## // ## // ## // ## // ## // ## // ## //## // ## // ## // ## // ## // ## // ## // ## // ##
@@ -408,7 +410,20 @@ nome_whaticket(){
     echo ""
 }
 
-## Titulo Evolution [3]
+## Titulo Izing [139]
+
+nome_izing(){
+    clear
+    echo ""
+    echo -e "$branco               ██╗███████╗██╗███╗   ██╗ ██████╗ \e[0m"
+    echo -e "$branco               ██║╚══███╔╝██║████╗  ██║██╔════╝ \e[0m"
+    echo -e "$branco               ██║  ███╔╝ ██║██╔██╗ ██║██║  ███╗\e[0m"
+    echo -e "$branco               ██║ ███╔╝  ██║██║╚██╗██║██║   ██║\e[0m"
+    echo -e "$branco               ██║███████╗██║██║ ╚████║╚██████╔╝\e[0m"
+    echo -e "$branco               ╚═╝╚══════╝╚═╝╚═╝  ╚═══╝ ╚═════╝ \e[0m"
+    echo ""
+    echo ""
+}
 
 nome_evolution() {
     clear
@@ -2258,7 +2273,7 @@ menu_instalador_pg_1(){
     echo -e "${amarelo}[ 21 ]${reset} - ${branco}Formbricks ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 44 ]${reset} - ${branco}HumHub ${verde}[1/1] ${reset}"
     echo -e "${amarelo}[ 22 ]${reset} - ${branco}NocoDB ${verde}[1/1]${reset}                           ${verde}| ${reset}  ${amarelo}[ 45 ]${reset} - ${branco}Yourls ${verde}[1/1] ${reset}"
     echo -e ""
-    echo -e "${verde}>>> ${amarelo}[ 138 ]${reset} - ${branco}Whaticket Community ${verde}[NOVO]${reset}                                                ${verde}<<<${reset}"
+    echo -e "${verde}>>> ${amarelo}[ 138 ]${reset} - ${branco}Whaticket Community ${verde}[NOVO]${reset}     ${amarelo}[ 139 ]${reset} - ${branco}Izing ${verde}[NOVO]${reset}                       ${verde}<<<${reset}"
     echo -e ""
     echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R2${branco} para ir para pagina 2 -->${reset}"
     echo -e ""
@@ -5534,6 +5549,383 @@ requisitar_outra_instalacao
 ## ██║███╗██║██╔══██║██╔══██║   ██║   ██║██║     ██╔═██╗ ██╔══╝     ██║
 ## ╚███╔███╔╝██║  ██║██║  ██║   ██║   ██║╚██████╗██║  ██╗███████╗   ██║
 ##  ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝   ╚═╝
+
+## ██╗███████╗██╗███╗   ██╗ ██████╗
+## ██║╚══███╔╝██║████╗  ██║██╔════╝
+## ██║  ███╔╝ ██║██╔██╗ ██║██║  ███╗
+## ██║ ███╔╝  ██║██║╚██╗██║██║   ██║
+## ██║███████╗██║██║ ╚████║╚██████╔╝
+## ╚═╝╚══════╝╚═╝╚═╝  ╚═══╝ ╚═════╝
+
+ferramenta_izing() {
+
+## Verifica os recursos
+recursos 4 4 && continue || return
+
+## Limpa o terminal
+clear
+
+## Ativa a função dados para pegar os dados da vps
+dados
+
+## Mostra o nome da aplicação
+nome_izing
+
+## Mostra mensagem para preencher informações
+preencha_as_info
+
+while true; do
+
+    echo -e "\e[97mPasso$amarelo 1/3\e[0m"
+    echo -en "\e[33mDigite o Dominio do BACKEND do Izing (ex: api.izing.vemfazer.com): \e[0m" && read -r url_izing_back
+    echo ""
+
+    echo -e "\e[97mPasso$amarelo 2/3\e[0m"
+    echo -en "\e[33mDigite o Dominio do FRONTEND do Izing (ex: izing.vemfazer.com): \e[0m" && read -r url_izing_front
+    echo ""
+
+    echo -e "\e[97mPasso$amarelo 3/3\e[0m"
+    echo -en "\e[33mDigite o Email do Admin do Izing (ex: admin@vemfazer.com): \e[0m" && read -r email_admin_izing
+    echo ""
+
+    clear
+    nome_izing
+    conferindo_as_info
+
+    echo -e "\e[33mDominio Backend:\e[97m https://$url_izing_back\e[0m"
+    echo ""
+    echo -e "\e[33mDominio Frontend:\e[97m https://$url_izing_front\e[0m"
+    echo ""
+    echo -e "\e[33mEmail do Admin:\e[97m $email_admin_izing\e[0m"
+    echo ""
+
+    read -p "As respostas estão corretas? (Y/N): " confirmacao
+    if [ "$confirmacao" = "Y" ] || [ "$confirmacao" = "y" ]; then
+        clear
+        instalando_msg
+        break
+    else
+        clear
+        nome_izing
+        preencha_as_info
+    fi
+done
+
+echo -e "\e[97m• INICIANDO A INSTALAÇÃO DO IZING \e[33m[1/6]\e[0m"
+echo ""
+sleep 1
+
+telemetria Izing iniciado
+dados
+
+## Gera senhas aleatórias
+senha_pg_izing=$(openssl rand -hex 16)
+jwt_secret_izing=$(openssl rand -hex 32)
+jwt_refresh_izing=$(openssl rand -hex 32)
+
+## Mensagem de Passo
+echo -e "\e[97m• CLONANDO REPOSITÓRIO DO IZING \e[33m[2/6]\e[0m"
+echo ""
+sleep 1
+
+## Garante git instalado
+if ! command -v git > /dev/null 2>&1; then
+    apt-get update > /dev/null 2>&1
+    apt-get install -y git > /dev/null 2>&1
+fi
+
+IZING_DIR="/opt/izing${1:+_$1}"
+rm -rf "$IZING_DIR"
+git clone --depth 1 https://github.com/ldurans/izing.open.io.git "$IZING_DIR" > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    echo "1/1 - [ OK ] - Clonando repositório em $IZING_DIR"
+else
+    echo "1/1 - [ OFF ] - Falha ao clonar repositório do Izing"
+    return 1
+fi
+
+## Mensagem de Passo
+echo -e "\e[97m• BUILDANDO IMAGENS DO IZING (pode levar 10-20 min) \e[33m[3/6]\e[0m"
+echo ""
+sleep 1
+
+## Build do backend
+cd "$IZING_DIR/backend" || return 1
+docker build -t izing-backend:local . > /tmp/izing_backend_build.log 2>&1
+if [ $? -eq 0 ]; then
+    echo "1/2 - [ OK ] - Build do backend (izing-backend:local)"
+else
+    echo "1/2 - [ OFF ] - Falha no build do backend. Veja /tmp/izing_backend_build.log"
+    return 1
+fi
+
+## Build do frontend (precisa de URL_BACKEND como build arg)
+cd "$IZING_DIR/frontend" || return 1
+
+## Configura o .env do frontend para apontar pro backend correto
+cat > .env <<ENVEOF
+VUE_URL_API=https://$url_izing_back
+VUE_FACEBOOK_APP_ID=
+VUE_URL_API_REPORTS=https://$url_izing_back
+ENVEOF
+
+docker build -t izing-frontend:local . > /tmp/izing_frontend_build.log 2>&1
+if [ $? -eq 0 ]; then
+    echo "2/2 - [ OK ] - Build do frontend (izing-frontend:local)"
+else
+    echo "2/2 - [ OFF ] - Falha no build do frontend. Veja /tmp/izing_frontend_build.log"
+    return 1
+fi
+
+cd
+
+## Mensagem de Passo
+echo -e "\e[97m• CRIANDO STACK DO IZING \e[33m[4/6]\e[0m"
+echo ""
+sleep 1
+
+cat > izing${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- IZING --------------------------- ##
+
+  izing${1:+_$1}_postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=izing
+      - POSTGRES_PASSWORD=$senha_pg_izing
+      - POSTGRES_DB=izing
+      - TZ=America/Sao_Paulo
+    volumes:
+      - izing${1:+_$1}_postgres:/var/lib/postgresql/data
+    networks:
+      - $nome_rede_interna
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+## --------------------------- IZING --------------------------- ##
+
+  izing${1:+_$1}_redis:
+    image: redis:latest
+    command: ["redis-server", "--appendonly", "yes", "--port", "6379"]
+    volumes:
+      - izing${1:+_$1}_redis:/data
+    networks:
+      - $nome_rede_interna
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+## --------------------------- IZING --------------------------- ##
+
+  izing${1:+_$1}_backend:
+    image: izing-backend:local
+    networks:
+      - $nome_rede_interna
+    environment:
+      - NODE_ENV=production
+      - BACKEND_URL=https://$url_izing_back
+      - FRONTEND_URL=https://$url_izing_front
+      - PROXY_PORT=443
+      - PORT=3000
+      - DB_DIALECT=postgres
+      - POSTGRES_HOST=izing${1:+_$1}_postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=izing
+      - POSTGRES_PASSWORD=$senha_pg_izing
+      - POSTGRES_DB=izing
+      - JWT_SECRET=$jwt_secret_izing
+      - JWT_REFRESH_SECRET=$jwt_refresh_izing
+      - IO_REDIS_SERVER=izing${1:+_$1}_redis
+      - IO_REDIS_PORT=6379
+      - IO_REDIS_DB_SESSION=2
+      - IO_REDIS_PASSWORD=
+      - CHROME_BIN=/usr/bin/google-chrome-stable
+      - MIN_SLEEP_BUSINESS_HOURS=10000
+      - MAX_SLEEP_BUSINESS_HOURS=20000
+      - MIN_SLEEP_AUTO_REPLY=4000
+      - MAX_SLEEP_AUTO_REPLY=6000
+      - MIN_SLEEP_INTERVAL=2000
+      - MAX_SLEEP_INTERVAL=5000
+      - ADMIN_DOMAIN=izing.io
+      - TZ=America/Sao_Paulo
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2048M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.izing${1:+_$1}_backend.rule=Host(\`$url_izing_back\`)
+        - traefik.http.routers.izing${1:+_$1}_backend.entrypoints=websecure
+        - traefik.http.routers.izing${1:+_$1}_backend.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.izing${1:+_$1}_backend.priority=1
+        - traefik.http.routers.izing${1:+_$1}_backend.service=izing${1:+_$1}_backend
+        - traefik.http.services.izing${1:+_$1}_backend.loadbalancer.server.port=3000
+        - traefik.http.services.izing${1:+_$1}_backend.loadbalancer.passHostHeader=true
+
+## --------------------------- IZING --------------------------- ##
+
+  izing${1:+_$1}_frontend:
+    image: izing-frontend:local
+    networks:
+      - $nome_rede_interna
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.izing${1:+_$1}_frontend.rule=Host(\`$url_izing_front\`)
+        - traefik.http.routers.izing${1:+_$1}_frontend.entrypoints=websecure
+        - traefik.http.routers.izing${1:+_$1}_frontend.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.izing${1:+_$1}_frontend.priority=1
+        - traefik.http.routers.izing${1:+_$1}_frontend.service=izing${1:+_$1}_frontend
+        - traefik.http.services.izing${1:+_$1}_frontend.loadbalancer.server.port=80
+        - traefik.http.services.izing${1:+_$1}_frontend.loadbalancer.passHostHeader=true
+
+## --------------------------- IZING --------------------------- ##
+
+volumes:
+  izing${1:+_$1}_postgres:
+    external: true
+    name: izing${1:+_$1}_postgres
+  izing${1:+_$1}_redis:
+    external: true
+    name: izing${1:+_$1}_redis
+
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL
+if [ $? -eq 0 ]; then
+    echo "1/1 - [ OK ] - Criando Stack"
+else
+    echo "1/1 - [ OFF ] - Criando Stack"
+fi
+STACK_NAME="izing${1:+_$1}"
+stack_editavel
+
+## Mensagem de Passo
+echo -e "\e[97m• VERIFICANDO SERVIÇO \e[33m[5/6]\e[0m"
+echo ""
+sleep 1
+
+pull postgres:13 redis:latest
+
+wait_stack izing${1:+_$1}_izing${1:+_$1}_postgres izing${1:+_$1}_izing${1:+_$1}_redis izing${1:+_$1}_izing${1:+_$1}_backend izing${1:+_$1}_izing${1:+_$1}_frontend
+
+## Mensagem de Passo
+echo -e "\e[97m• MIGRANDO BANCO DE DADOS E CRIANDO USUÁRIO ADMIN \e[33m[6/6]\e[0m"
+echo ""
+sleep 5
+
+back_container_name="izing${1:+_$1}_izing${1:+_$1}_backend"
+pg_container_name="izing${1:+_$1}_izing${1:+_$1}_postgres"
+max_wait_time=900
+wait_interval=30
+elapsed_time=0
+
+while [ $elapsed_time -lt $max_wait_time ]; do
+  BACK_CONTAINER_ID=$(docker ps -q --filter "name=$back_container_name")
+  if [ -n "$BACK_CONTAINER_ID" ]; then
+    break
+  fi
+  sleep $wait_interval
+  elapsed_time=$((elapsed_time + wait_interval))
+done
+
+if [ -z "$BACK_CONTAINER_ID" ]; then
+  echo "1/2 - [ OFF ] - Container do backend não encontrado após $max_wait_time segundos."
+else
+  ## Aguarda o Postgres aceitar conexões
+  PG_CONTAINER_ID=$(docker ps -q --filter "name=$pg_container_name")
+  for i in $(seq 1 60); do
+    docker exec "$PG_CONTAINER_ID" pg_isready -U izing > /dev/null 2>&1 && break
+    sleep 5
+  done
+
+  ## Roda migrations
+  docker exec "$BACK_CONTAINER_ID" npx sequelize db:migrate > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+      echo "1/2 - [ OK ] - Executando: npx sequelize db:migrate"
+  else
+      echo "1/2 - [ OFF ] - Falha em: npx sequelize db:migrate"
+  fi
+
+  ## Roda seeds (cria admin@izing.io / 123456)
+  docker exec "$BACK_CONTAINER_ID" npx sequelize db:seed:all > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+      echo "2/2 - [ OK ] - Executando: npx sequelize db:seed:all (usuário admin criado)"
+  else
+      echo "2/2 - [ OFF ] - Falha em: npx sequelize db:seed:all"
+  fi
+fi
+
+telemetria Izing finalizado
+
+cd dados_vps
+
+cat > dados_izing${1:+_$1} <<EOL
+[ IZING ]
+
+Backend (API): https://$url_izing_back
+Frontend (Painel): https://$url_izing_front
+
+Login Admin (criado automaticamente pelas seeds):
+  Email: admin@izing.io
+  Senha: 123456
+
+Email Admin sugerido: $email_admin_izing
+Senha Postgres: $senha_pg_izing
+
+Código-fonte clonado em: $IZING_DIR
+EOL
+
+cd
+cd
+
+wait_30_sec
+instalado_msg
+guarde_os_dados_msg
+
+echo -e "\e[32m[ IZING ]\e[0m"
+echo ""
+echo -e "\e[97mFrontend:\e[33m https://$url_izing_front\e[0m"
+echo ""
+echo -e "\e[97mBackend:\e[33m https://$url_izing_back\e[0m"
+echo ""
+echo -e "\e[97mLogin padrão:\e[33m admin@izing.io / 123456\e[0m"
+echo ""
+echo -e "\e[97mTROQUE A SENHA PADRÃO IMEDIATAMENTE APÓS O PRIMEIRO LOGIN!\e[0m"
+
+creditos_msg
+requisitar_outra_instalacao
+}
 
 ferramenta_whaticket() {
 
@@ -44178,6 +44570,21 @@ while true; do
             verificar_stack "portainer" && continue || echo ""
 
             ferramenta_traefik_e_portainer
+            ;;
+
+        139|izing|IZING)
+
+            verificar_stack "izing${opcao2:+_$opcao2}" && continue || echo ""
+
+            if verificar_docker_e_portainer_traefik; then
+                STACK_NAME="izing${opcao2:+_$opcao2}"
+                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
+                    ferramenta_izing "$opcao2"
+                else
+                    APP_ORION="ferramenta_izing"
+                    verificar_arquivo
+                fi
+            fi
             ;;
 
         138|whaticket|WHATICKET)
