@@ -2606,6 +2606,7 @@ gerenciar_instalacoes() {
 ## RESET TOTAL DA VPS — remove tudo do Docker para uma instalação do zero
 ## sem precisar formatar o servidor. Mantém o sistema operacional intacto.
 reset_vps_completo() {
+    local stk net redes_para_remover=()
     clear
     echo -e "\e[31m===================================================================================================\e[0m"
     echo -e "\e[31m                            ⚠️  RESET TOTAL DA VPS  ⚠️                                       \e[0m"
@@ -2643,7 +2644,10 @@ reset_vps_completo() {
             echo "       - removendo stack: $stk"
             docker stack rm "$stk" >/dev/null 2>&1
         done
-        sleep 5
+        for _ in $(seq 1 30); do
+            [ -z "$(docker stack ls --format "{{.Name}}" 2>/dev/null)" ] && break
+            sleep 2
+        done
 
         echo -e "\e[33m[2/7] Parando e removendo containers restantes...\e[0m"
         docker ps -aq 2>/dev/null | xargs -r docker rm -f >/dev/null 2>&1
@@ -2655,9 +2659,12 @@ reset_vps_completo() {
         docker volume ls -q 2>/dev/null | xargs -r docker volume rm -f >/dev/null 2>&1
 
         echo -e "\e[33m[5/7] Removendo redes customizadas...\e[0m"
-        for net in $(docker network ls --filter "type=custom" --format "{{.Name}}" 2>/dev/null); do
-            docker network rm "$net" >/dev/null 2>&1
+        mapfile -t redes_para_remover < <(docker network ls --filter "type=custom" --format "{{.Name}}" 2>/dev/null | grep -vE '^(ingress|docker_gwbridge)$')
+        for net in "${redes_para_remover[@]}"; do
+            echo "       - removendo rede: $net"
+            timeout 15 docker network rm "$net" >/dev/null 2>&1 || true
         done
+        docker network prune -f >/dev/null 2>&1 || true
 
         echo -e "\e[33m[6/7] Removendo todas as imagens Docker...\e[0m"
         docker images -q 2>/dev/null | xargs -r docker rmi -f >/dev/null 2>&1
