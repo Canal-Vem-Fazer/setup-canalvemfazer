@@ -3724,6 +3724,18 @@ By: Vem Fazer"
 
 ferramenta_traefik_e_portainer() {
 
+## Garante pré-requisitos básicos (jq, curl, ca-certificates) antes de qualquer passo
+if ! command -v jq >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
+    echo "Instalando pré-requisitos (jq, curl, ca-certificates)..."
+    sudo apt-get update -y > /dev/null 2>&1
+    sudo apt-get install -y jq curl ca-certificates > /dev/null 2>&1
+    if ! command -v jq >/dev/null 2>&1; then
+        echo -e "\e[31m[ERRO] Não foi possível instalar 'jq'. Instale manualmente: sudo apt-get install -y jq\e[0m"
+        read -r -p "Pressione ENTER para voltar ao menu..." _
+        return 1
+    fi
+fi
+
 ## Verifica os recursos
 recursos 1 1 || return
 
