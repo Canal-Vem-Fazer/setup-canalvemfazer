@@ -2260,7 +2260,7 @@ menu_instalador_pg_1(){
     echo -e ""
     echo -e "${verde}>>> ${amarelo}[ 138 ]${reset} - ${branco}Langfuse ${verde}[1/1]${reset}     ${amarelo}[ 139 ]${reset} - ${branco}Metabase ${verde}[1/1]${reset}                                ${verde}<<<${reset}"
     echo -e ""
-    echo -e "${branco}<-- Digite ${amarelo}P1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}P2${branco} para ir para pagina 2 -->${reset}"
+    echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R2${branco} para ir para pagina 2 -->${reset}"
     echo -e ""
 }
 
@@ -2289,7 +2289,7 @@ menu_instalador_pg_2(){
     echo -e "${amarelo}[ 67 ]${reset} - ${branco}Bolt ${verde}[2/4]${reset}                             ${verde}| ${reset}  ${amarelo}[ 90 ]${reset} - ${branco}AstraCampaign ${verde}[1/1]${reset}"
     echo -e "${amarelo}[ 68 ]${reset} - ${branco}WiseMapping ${verde}[1/1]${reset}                      ${verde}| ${reset}  ${amarelo}[ 91 ]${reset} - ${branco}Duplicati ${verde}[1/1]${reset}"
     echo -e ""
-    echo -e "${branco}<-- Digite ${amarelo}P1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}P3${branco} para ir para pagina 3 -->${reset}"
+    echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R3${branco} para ir para pagina 3 -->${reset}"
     echo -e ""
 }
 
@@ -2318,7 +2318,7 @@ menu_instalador_pg_3(){
     echo -e "${amarelo}[ 113 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 136 ]${reset} - ${branco}EM BREVE...${reset}"
     echo -e "${amarelo}[ 114 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 137 ]${reset} - ${branco}EM BREVE...${reset}"
     echo -e ""
-    echo -e "${branco}<-- Digite ${amarelo}P2 ${branco}para ir para pagina 2             ${amarelo}|${branco}              Digite ${amarelo}P3${branco} para ir para pagina 3 -->${reset}"
+    echo -e "${branco}<-- Digite ${amarelo}R2 ${branco}para ir para pagina 2             ${amarelo}|${branco}              Digite ${amarelo}R3${branco} para ir para pagina 3 -->${reset}"
     echo -e ""
 }
 
@@ -2363,7 +2363,7 @@ menu_comandos(){
   echo -e "${branco} • ${amarelo}limpar${reset} - ${branco}Limpa Logs, volumes e imagens do Docker não usadas${reset}"
 
   echo -e ""
-  echo -e "${branco}<-- Digite ${amarelo}P1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}P2${branco} para ir para pagina 2 -->${reset}"
+  echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R2${branco} para ir para pagina 2 -->${reset}"
   echo -e ""
 }
 
@@ -44183,6 +44183,10 @@ while true; do
     opcao1=$1
     opcao2=$2
 
+    if [[ "$opcao1" =~ ^[0-9]+$ ]]; then
+        opcao1=$((10#$opcao1))
+    fi
+
     case $opcao1 in
 
         0|00|teste_smtp|TESTE_SMTP)
@@ -46223,15 +46227,15 @@ while true; do
             quepasa.setup.on
             ;;
 
-        p1|P1)
+        p1|P1|r1|R1)
             menu_instalador="1"
             ;;
 
-        p2|P2)
+        p2|P2|r2|R2)
             menu_instalador="2"
             ;;
         
-        p3|P3)
+        p3|P3|r3|R3)
             menu_instalador="3"
             ;;
 
