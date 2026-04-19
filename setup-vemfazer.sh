@@ -2260,8 +2260,11 @@ menu_instalador_pg_1(){
     echo -e ""
     echo -e "${verde}>>> ${amarelo}[ 138 ]${reset} - ${branco}Langfuse ${verde}[1/1]${reset}     ${amarelo}[ 139 ]${reset} - ${branco}Metabase ${verde}[1/1]${reset}                                ${verde}<<<${reset}"
     echo -e ""
+    echo -e "${verde}>>> ${amarelo}[ 99 ]${reset} ou digite ${amarelo}STATUS${reset} - ${branco}Status / Gerenciar instalações (reiniciar, logs, desinstalar)${reset}                ${verde}<<<${reset}"
+    echo -e ""
     echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R2${branco} para ir para pagina 2 -->${reset}"
     echo -e ""
+
 }
 
 menu_instalador_pg_2(){
@@ -2371,34 +2374,272 @@ menu_comandos(){
 ##                                         VEM FAZER                                        ##
 ## // ## // ## // ## // ## // ## // ## // ## //## // ## // ## // ## // ## // ## // ## // ## // ##
 
-## Verificar se stack já existe
+## Verificar se stack já existe — agora interativo
+## Retorna 0 = bloquear instalação (stack existe e usuário não quer refazer)
+## Retorna 1 = prosseguir com a instalação (stack não existe OU foi removida)
 verificar_stack() {
-    clear
     local nome_stack="$1"
 
-    if docker stack ls --format "{{.Name}}" | grep -q "^${nome_stack}$"; then
-        nome_verificar_stack
-        echo -e "A stack '$amarelo${nome_stack}\e[0m' existe."
-        echo -e "Caso deseje refazer a instalação, por favor, remova a stack $amarelo${nome_stack}\e[0m do"
-        echo -e "seu Portainer e tente novamente..."
-        echo -e ""
-        echo -e "Voltando ao menu principal em 10 segundos"
-        sleep 10
-
-        clear 
-
-        return 0
-    else
+    # Se a stack não existe, libera a instalação imediatamente
+    if ! docker stack ls --format "{{.Name}}" 2>/dev/null | grep -q "^${nome_stack}$"; then
         return 1
     fi
+
+    while true; do
+        clear
+        nome_verificar_stack
+
+        # Coleta status detalhado da stack
+        local total_servicos servicos_online
+        total_servicos=$(docker stack services "$nome_stack" --format "{{.Name}}" 2>/dev/null | wc -l)
+        servicos_online=$(docker stack services "$nome_stack" --format "{{.Replicas}}" 2>/dev/null \
+            | awk -F'/' '$1==$2 && $1!="0"{c++} END{print c+0}')
+
+        echo -e "A stack '$amarelo${nome_stack}\e[0m' já está instalada nesta VPS."
+        echo -e "Status: $amarelo${servicos_online}/${total_servicos}\e[0m serviços online."
+        echo ""
+        docker stack services "$nome_stack" 2>/dev/null \
+            | awk 'NR==1 || /./ {print "  "$0}'
+        echo ""
+        echo -e "$amarelo--------------------------------------------------------------\e[0m"
+        echo -e "Escolha uma opção:"
+        echo -e "  $amarelo[C]\e[0m Continuar — refazer instalação (remove a stack atual)"
+        echo -e "  $amarelo[D]\e[0m Desinstalar — remover a stack '${nome_stack}' definitivamente"
+        echo -e "  $amarelo[R]\e[0m Reiniciar serviços da stack"
+        echo -e "  $amarelo[L]\e[0m Ver logs do primeiro serviço"
+        echo -e "  $amarelo[M]\e[0m Voltar ao menu principal"
+        echo -e "$amarelo--------------------------------------------------------------\e[0m"
+        echo -en "\e[33mDigite sua escolha (C/D/R/L/M): \e[0m"
+        read -r escolha_stack
+        escolha_stack=$(echo "$escolha_stack" | tr '[:lower:]' '[:upper:]')
+
+        case "$escolha_stack" in
+            C)
+                echo ""
+                echo -en "\e[31mTem certeza? Isso vai REMOVER a stack '$nome_stack' antes de reinstalar (s/N): \e[0m"
+                read -r conf
+                if [[ "$conf" =~ ^[sS]$ ]]; then
+                    echo -e "\e[33mRemovendo stack '$nome_stack'...\e[0m"
+                    docker stack rm "$nome_stack" >/dev/null 2>&1
+                    # Aguarda remoção completa (containers, redes)
+                    local tentativas=0
+                    while docker stack ls --format "{{.Name}}" 2>/dev/null | grep -q "^${nome_stack}$"; do
+                        sleep 2
+                        tentativas=$((tentativas+1))
+                        [ $tentativas -ge 30 ] && break
+                    done
+                    echo -e "\e[32mStack removida. Prosseguindo com a instalação...\e[0m"
+                    sleep 2
+                    return 1
+                fi
+                ;;
+            D)
+                echo ""
+                echo -en "\e[31mConfirma desinstalar '$nome_stack' (s/N): \e[0m"
+                read -r conf
+                if [[ "$conf" =~ ^[sS]$ ]]; then
+                    docker stack rm "$nome_stack" >/dev/null 2>&1
+                    echo -e "\e[32mStack '$nome_stack' removida.\e[0m"
+                    read -r -p "Pressione ENTER para voltar ao menu..." _
+                    return 0
+                fi
+                ;;
+            R)
+                echo -e "\e[33mReiniciando serviços de '$nome_stack'...\e[0m"
+                for svc in $(docker stack services "$nome_stack" --format "{{.Name}}" 2>/dev/null); do
+                    docker service update --force "$svc" >/dev/null 2>&1 \
+                        && echo "  [ OK ] $svc" \
+                        || echo "  [ERRO] $svc"
+                done
+                read -r -p "Pressione ENTER para continuar..." _
+                ;;
+            L)
+                local primeiro_svc
+                primeiro_svc=$(docker stack services "$nome_stack" --format "{{.Name}}" 2>/dev/null | head -n1)
+                if [ -n "$primeiro_svc" ]; then
+                    echo -e "\e[33mLogs de '$primeiro_svc' (Ctrl+C para sair):\e[0m"
+                    sleep 1
+                    docker service logs --tail 50 "$primeiro_svc" 2>&1 | tail -n 60
+                fi
+                read -r -p "Pressione ENTER para continuar..." _
+                ;;
+            M|"")
+                clear
+                return 0
+                ;;
+            *)
+                echo -e "\e[31mOpção inválida.\e[0m"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
-## // ## // ## // ## // ## // ## // ## // ## //## // ## // ## // ## // ## // ## // ## // ## // ##
-##                                         VEM FAZER                                        ##
-## // ## // ## // ## // ## // ## // ## // ## //## // ## // ## // ## // ## // ## // ## // ## // ##
+## Painel de status / gerenciamento de todas as stacks instaladas
+gerenciar_instalacoes() {
+    while true; do
+        clear
+        echo -e "$amarelo===================================================================================================\e[0m"
+        echo -e "$branco                       STATUS / GERENCIAR INSTALAÇÕES                              \e[0m"
+        echo -e "$amarelo===================================================================================================\e[0m"
+        echo ""
+
+        if ! command -v docker >/dev/null 2>&1; then
+            echo -e "\e[31mDocker não está instalado nesta VPS. Instale primeiro a opção [01] Traefik & Portainer.\e[0m"
+            echo ""
+            read -r -p "Pressione ENTER para voltar ao menu principal..." _
+            return
+        fi
+
+        # Lista todas as stacks
+        local stacks
+        mapfile -t stacks < <(docker stack ls --format "{{.Name}}" 2>/dev/null | sort)
+
+        if [ ${#stacks[@]} -eq 0 ]; then
+            echo -e "\e[33mNenhuma stack instalada nesta VPS.\e[0m"
+            echo ""
+            read -r -p "Pressione ENTER para voltar ao menu principal..." _
+            return
+        fi
+
+        # Tabela com status
+        printf "  %-4s %-25s %-12s %-10s\n" "Nº" "STACK" "SERVIÇOS" "STATUS"
+        echo -e "$amarelo  ---------------------------------------------------------------\e[0m"
+        local i=1
+        for s in "${stacks[@]}"; do
+            local total online status cor
+            total=$(docker stack services "$s" --format "{{.Name}}" 2>/dev/null | wc -l)
+            online=$(docker stack services "$s" --format "{{.Replicas}}" 2>/dev/null \
+                | awk -F'/' '$1==$2 && $1!="0"{c++} END{print c+0}')
+            if [ "$online" = "$total" ] && [ "$total" -gt 0 ]; then
+                status="ONLINE"; cor="\e[32m"
+            elif [ "$online" -gt 0 ]; then
+                status="PARCIAL"; cor="\e[33m"
+            else
+                status="OFFLINE"; cor="\e[31m"
+            fi
+            printf "  %-4s %-25s %-12s ${cor}%-10s\e[0m\n" "[$i]" "$s" "${online}/${total}" "$status"
+            i=$((i+1))
+        done
+        echo ""
+        echo -e "$amarelo  ---------------------------------------------------------------\e[0m"
+        echo -e "  Digite o $amarelo[Nº]\e[0m da stack para gerenciar, ou $amarelo[M]\e[0m para voltar ao menu principal."
+        echo -en "\e[33mEscolha: \e[0m"
+        read -r esc
+        esc=$(echo "$esc" | tr '[:lower:]' '[:upper:]')
+
+        if [[ "$esc" == "M" || -z "$esc" ]]; then
+            clear
+            return
+        fi
+
+        if ! [[ "$esc" =~ ^[0-9]+$ ]] || [ "$esc" -lt 1 ] || [ "$esc" -gt ${#stacks[@]} ]; then
+            echo -e "\e[31mOpção inválida.\e[0m"; sleep 1; continue
+        fi
+
+        local alvo="${stacks[$((esc-1))]}"
+
+        # Submenu de ações
+        while true; do
+            clear
+            echo -e "$amarelo===================================================================================================\e[0m"
+            echo -e "$branco   GERENCIAR STACK: $amarelo${alvo}\e[0m"
+            echo -e "$amarelo===================================================================================================\e[0m"
+            echo ""
+            docker stack services "$alvo" 2>/dev/null
+            echo ""
+            echo -e "  $amarelo[R]\e[0m Reiniciar todos os serviços"
+            echo -e "  $amarelo[L]\e[0m Ver logs (últimas 50 linhas de cada serviço)"
+            echo -e "  $amarelo[D]\e[0m Desinstalar (remover esta stack)"
+            echo -e "  $amarelo[V]\e[0m Voltar à lista de stacks"
+            echo -en "\e[33mEscolha (R/L/D/V): \e[0m"
+            read -r acao
+            acao=$(echo "$acao" | tr '[:lower:]' '[:upper:]')
+
+            case "$acao" in
+                R)
+                    echo -e "\e[33mReiniciando '$alvo'...\e[0m"
+                    for svc in $(docker stack services "$alvo" --format "{{.Name}}" 2>/dev/null); do
+                        docker service update --force "$svc" >/dev/null 2>&1 \
+                            && echo "  [ OK ] $svc" \
+                            || echo "  [ERRO] $svc"
+                    done
+                    read -r -p "Pressione ENTER para continuar..." _
+                    ;;
+                L)
+                    for svc in $(docker stack services "$alvo" --format "{{.Name}}" 2>/dev/null); do
+                        echo -e "$amarelo--- $svc ---\e[0m"
+                        docker service logs --tail 50 "$svc" 2>&1 | tail -n 50
+                        echo ""
+                    done
+                    read -r -p "Pressione ENTER para continuar..." _
+                    ;;
+                D)
+                    echo -en "\e[31mConfirma DESINSTALAR a stack '$alvo'? (s/N): \e[0m"
+                    read -r conf
+                    if [[ "$conf" =~ ^[sS]$ ]]; then
+                        docker stack rm "$alvo" >/dev/null 2>&1
+                        echo -e "\e[32mStack '$alvo' removida.\e[0m"
+                        sleep 2
+                        break
+                    fi
+                    ;;
+                V|"")
+                    break
+                    ;;
+                *)
+                    echo -e "\e[31mOpção inválida.\e[0m"; sleep 1
+                    ;;
+            esac
+        done
+    done
+}
+
+# Cobre todos os comandos externos usados pelo instalador.
+instalar_prerequisitos() {
+    if [ "${PREREQ_INSTALADOS:-0}" = "1" ]; then
+        return 0
+    fi
+
+    local faltando=()
+    command -v jq        >/dev/null 2>&1 || faltando+=("jq")
+    command -v curl      >/dev/null 2>&1 || faltando+=("curl")
+    command -v wget      >/dev/null 2>&1 || faltando+=("wget")
+    command -v openssl   >/dev/null 2>&1 || faltando+=("openssl")
+    command -v git       >/dev/null 2>&1 || faltando+=("git")
+    command -v htpasswd  >/dev/null 2>&1 || faltando+=("apache2-utils")
+    [ -d /etc/ssl/certs ] || faltando+=("ca-certificates")
+
+    if [ ${#faltando[@]} -eq 0 ]; then
+        export PREREQ_INSTALADOS=1
+        return 0
+    fi
+
+    echo -e "\e[33mInstalando pré-requisitos: ${faltando[*]}\e[0m"
+    sudo apt-get update -y >/dev/null 2>&1
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${faltando[@]}" >/dev/null 2>&1
+
+    local criticos=(jq curl wget openssl git htpasswd)
+    local ainda_faltando=()
+    for bin in "${criticos[@]}"; do
+        command -v "$bin" >/dev/null 2>&1 || ainda_faltando+=("$bin")
+    done
+
+    if [ ${#ainda_faltando[@]} -gt 0 ]; then
+        echo -e "\e[31m[ERRO] Não foi possível instalar: ${ainda_faltando[*]}\e[0m"
+        echo -e "\e[31mInstale manualmente: sudo apt-get install -y jq curl wget openssl git apache2-utils ca-certificates\e[0m"
+        read -r -p "Pressione ENTER para continuar mesmo assim..." _
+        return 1
+    fi
+
+    export PREREQ_INSTALADOS=1
+    return 0
+}
 
 # Função para verificar recursos
 recursos() {
+    # Garante pré-requisitos antes de qualquer instalação
+    instalar_prerequisitos
     # Parâmetros de entrada: vCPU e GbRam
     vcpu_requerido=$1
     ram_requerido=$2
@@ -3724,19 +3965,7 @@ By: Vem Fazer"
 
 ferramenta_traefik_e_portainer() {
 
-## Garante pré-requisitos básicos (jq, curl, ca-certificates) antes de qualquer passo
-if ! command -v jq >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
-    echo "Instalando pré-requisitos (jq, curl, ca-certificates)..."
-    sudo apt-get update -y > /dev/null 2>&1
-    sudo apt-get install -y jq curl ca-certificates > /dev/null 2>&1
-    if ! command -v jq >/dev/null 2>&1; then
-        echo -e "\e[31m[ERRO] Não foi possível instalar 'jq'. Instale manualmente: sudo apt-get install -y jq\e[0m"
-        read -r -p "Pressione ENTER para voltar ao menu..." _
-        return 1
-    fi
-fi
-
-## Verifica os recursos
+## Verifica os recursos (instalar_prerequisitos é chamado dentro de recursos())
 recursos 1 1 || return
 
 ## Limpa o terminal
@@ -44222,6 +44451,10 @@ while true; do
 
         0|00|teste_smtp|TESTE_SMTP)
             ferramenta_testeemail
+            ;;
+
+        status|STATUS|gerenciar|GERENCIAR|99)
+            gerenciar_instalacoes
             ;;
 
         1|01|portainer|traefik|PORTAINER|TRAEFIK)
