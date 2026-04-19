@@ -13,12 +13,12 @@ echo -e "\e[32mchat.whatsapp.com/I6LVQeb13Cp7l39fA2cY0l      \e[97m<----- Grupos
 ##                                         VEM FAZER                                        ##
 ## // ## // ## // ## // ## // ## // ## // ## //## // ## // ## // ## // ## // ## // ## // ## // ##
 
-## Cores do Setup
+## Cores do Setup - Paleta Vem Fazer (azul/ciano)
 
-amarelo="\e[33m"
-verde="\e[32m"
+amarelo="\e[38;5;208m"   # Laranja Vem Fazer (destaque dos números)
+verde="\e[38;5;39m"      # Azul ciano (substitui verde Orion)
 branco="\e[97m"
-bege="\e[93m"
+bege="\e[38;5;215m"      # Bege alaranjado
 vermelho="\e[91m"
 reset="\e[0m"
 
@@ -2234,8 +2234,8 @@ menu_instalador() {
 }
 
 menu_instalador_pg_1(){
-    echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${amarelo}[ 23 ]${reset} - ${branco}Langfuse ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer ${verde}[1/1]${reset}              ${verde}| ${reset}  ${amarelo}[ 24 ]${reset} - ${branco}Metabase ${verde}[1/1] ${reset}"
+    echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${amarelo}[ 23 ]${reset} - ${branco}Whaticket Community ${verde}[NOVO] ${reset}"
+    echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer ${verde}[1/1]${reset}              ${verde}| ${reset}  ${amarelo}[ 24 ]${reset} - ${branco}Izing ${verde}[NOVO] ${reset}"
     echo -e "${amarelo}[ 02 ]${reset} - ${branco}Chatwoot ${verde}[2/2]${reset}                         ${verde}| ${reset}  ${amarelo}[ 25 ]${reset} - ${branco}Odoo ${verde}[2/2] ${reset}"
     echo -e "${amarelo}[ 03 ]${reset} - ${branco}Evolution API ${verde}[1/1]${reset}                    ${verde}| ${reset}  ${amarelo}[ 26 ]${reset} - ${branco}Uno API ${verde}[1/1] ${reset}"
     echo -e "${amarelo}[ 04 ]${reset} - ${branco}MinIO ${verde}[1/1]${reset}                            ${verde}| ${reset}  ${amarelo}[ 27 ]${reset} - ${branco}Quepasa API ${verde}[2/2] ${reset}"
@@ -2258,7 +2258,7 @@ menu_instalador_pg_1(){
     echo -e "${amarelo}[ 21 ]${reset} - ${branco}Formbricks ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 44 ]${reset} - ${branco}HumHub ${verde}[1/1] ${reset}"
     echo -e "${amarelo}[ 22 ]${reset} - ${branco}NocoDB ${verde}[1/1]${reset}                           ${verde}| ${reset}  ${amarelo}[ 45 ]${reset} - ${branco}Yourls ${verde}[1/1] ${reset}"
     echo -e ""
-    echo -e "${verde}>>> ${amarelo}[ 138 ]${reset} - ${branco}Whaticket Community ${verde}[NOVO]${reset}                                                ${verde}<<<${reset}"
+    echo -e "${verde}>>> ${amarelo}[ 138 ]${reset} - ${branco}Langfuse ${verde}[1/1]${reset}     ${amarelo}[ 139 ]${reset} - ${branco}Metabase ${verde}[1/1]${reset}                                ${verde}<<<${reset}"
     echo -e ""
     echo -e "${branco}<-- Digite ${amarelo}P1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}P2${branco} para ir para pagina 2 -->${reset}"
     echo -e ""
