@@ -44173,7 +44173,11 @@ while true; do
     nome_menu
     menu_instalador
 
-    read -p "Digite o NÚMERO da opção desejada ou COMANDO oculto: " opcao
+    read -r -p "Digite o NÚMERO da opção desejada ou COMANDO oculto: " opcao
+
+    opcao="${opcao//$'\r'/}"
+    opcao="${opcao#${opcao%%[![:space:]]*}}"
+    opcao="${opcao%${opcao##*[![:space:]]}}"
 
     set -- $opcao
     opcao1=$1
