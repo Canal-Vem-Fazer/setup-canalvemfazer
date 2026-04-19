@@ -6372,6 +6372,7 @@ services:
     networks:
       - $nome_rede_interna
     environment:
+      - PORT=3000
       - URL_BACKEND=https://$url_whaticket_back
       - URL_FRONTEND=https://$url_whaticket_front
       - REACT_APP_BACKEND_URL=https://$url_whaticket_back
@@ -6385,6 +6386,11 @@ services:
       placement:
         constraints:
           - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
       resources:
         limits:
           cpus: "0.5"
@@ -6396,7 +6402,7 @@ services:
         - traefik.http.routers.whaticket${1:+_$1}_frontend.tls.certresolver=letsencryptresolver
         - traefik.http.routers.whaticket${1:+_$1}_frontend.priority=1
         - traefik.http.routers.whaticket${1:+_$1}_frontend.service=whaticket${1:+_$1}_frontend
-        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.server.port=80
+        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.server.port=3000
         - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.passHostHeader=true
 
 ## --------------------------- WHATICKET --------------------------- ##
@@ -6440,6 +6446,27 @@ echo ""
 sleep 1
 
 wait_stack whaticket${1:+_$1}_whaticket${1:+_$1}_mysql whaticket${1:+_$1}_whaticket${1:+_$1}_redis whaticket${1:+_$1}_whaticket${1:+_$1}_backend whaticket${1:+_$1}_whaticket${1:+_$1}_frontend
+
+## Validação pós-deploy do frontend (detecta loop de reinício)
+front_service_name="whaticket${1:+_$1}_whaticket${1:+_$1}_frontend"
+echo ""
+echo -e "\e[33mAguardando 60s para validar estabilidade do frontend...\e[0m"
+sleep 60
+front_failed=$(docker service ps "$front_service_name" --no-trunc --format '{{.CurrentState}}' 2>/dev/null | grep -cE 'Rejected|Failed')
+front_running=$(docker service ps "$front_service_name" --no-trunc --format '{{.CurrentState}}' 2>/dev/null | grep -c 'Running')
+if [ "$front_running" -eq 0 ] || [ "$front_failed" -ge 3 ]; then
+    echo ""
+    echo -e "\e[31m❌ Frontend do Whaticket falhou após múltiplas tentativas.\e[0m"
+    echo -e "\e[31m   Verifique os logs com:\e[0m"
+    echo -e "\e[97m     docker service logs $front_service_name --tail 50 --no-trunc\e[0m"
+    echo -e "\e[31m   Causas comuns:\e[0m"
+    echo -e "\e[97m     1) DNS de $url_whaticket_front não aponta para esta VPS\e[0m"
+    echo -e "\e[97m     2) Memória insuficiente (mínimo recomendado: 4GB RAM)\e[0m"
+    echo -e "\e[97m     3) Imagem ghcr.io/canove/whaticket-community-frontend:master indisponível\e[0m"
+    echo ""
+else
+    echo -e "\e[32m✓ Frontend do Whaticket estável.\e[0m"
+fi
 
 ## Mensagem de Passo
 echo -e "\e[97m• MIGRANDO BANCO DE DADOS E CRIANDO USUÁRIO ADMIN \e[33m[5/5]\e[0m"
