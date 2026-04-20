@@ -2239,7 +2239,6 @@ menu_instalador() {
 
 menu_instalador_pg_1(){
     echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${amarelo}[ 23 ]${reset} - ${branco}Whaticket Community ${verde}[NOVO] ${reset}"
-    echo -e "${amarelo}[ 23r ]${reset} - ${branco}Reinstalar (limpa volumes): ${amarelo}whaticket-reset${reset} ${amarelo}chatwoot-reset${reset} ${amarelo}evolution-reset${reset} ${amarelo}n8n-reset${reset} ${amarelo}reset-all${reset}"
     echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer ${verde}[1/1]${reset}              ${verde}| ${reset}  ${amarelo}[ 24 ]${reset} - ${branco}Izing ${verde}[NOVO] ${reset}"
     echo -e "${amarelo}[ 02 ]${reset} - ${branco}Chatwoot ${verde}[2/2]${reset}                         ${verde}| ${reset}  ${amarelo}[ 25 ]${reset} - ${branco}Odoo ${verde}[2/2] ${reset}"
     echo -e "${amarelo}[ 03 ]${reset} - ${branco}Evolution API ${verde}[1/1]${reset}                    ${verde}| ${reset}  ${amarelo}[ 26 ]${reset} - ${branco}Uno API ${verde}[1/1] ${reset}"
@@ -2413,12 +2412,13 @@ verificar_stack() {
         echo -e "$amarelo--------------------------------------------------------------\e[0m"
         echo -e "Escolha uma opção:"
         echo -e "  $amarelo[C]\e[0m Continuar — refazer instalação (remove a stack atual)"
-        echo -e "  $amarelo[D]\e[0m Desinstalar — remover a stack '${nome_stack}' definitivamente"
+        echo -e "  $amarelo[V]\e[0m Reinstalar LIMPANDO VOLUMES (apaga TODOS os dados e reinstala)"
+        echo -e "  $amarelo[D]\e[0m Desinstalar — remover stack '${nome_stack}' E volumes (apaga dados)"
         echo -e "  $amarelo[R]\e[0m Reiniciar serviços da stack"
         echo -e "  $amarelo[L]\e[0m Ver logs do primeiro serviço"
         echo -e "  $amarelo[M]\e[0m Voltar ao menu principal"
         echo -e "$amarelo--------------------------------------------------------------\e[0m"
-        echo -en "\e[33mDigite sua escolha (C/D/R/L/M): \e[0m"
+        echo -en "\e[33mDigite sua escolha (C/V/D/R/L/M): \e[0m"
         read -r escolha_stack
         escolha_stack=$(echo "$escolha_stack" | tr '[:lower:]' '[:upper:]')
 
@@ -2430,7 +2430,6 @@ verificar_stack() {
                 if [[ "$conf" =~ ^[sS]$ ]]; then
                     echo -e "\e[33mRemovendo stack '$nome_stack'...\e[0m"
                     docker stack rm "$nome_stack" >/dev/null 2>&1
-                    # Aguarda remoção completa (containers, redes)
                     local tentativas=0
                     while docker stack ls --format "{{.Name}}" 2>/dev/null | grep -q "^${nome_stack}$"; do
                         sleep 2
@@ -2442,15 +2441,36 @@ verificar_stack() {
                     return 1
                 fi
                 ;;
+            V)
+                echo ""
+                echo -e "\e[31m⚠  ATENÇÃO: Isso vai REMOVER a stack '$nome_stack' E TODOS os volumes associados.\e[0m"
+                echo -e "\e[31m   TODOS OS DADOS desta aplicação serão PERDIDOS.\e[0m"
+                echo ""
+                echo -en "\e[31mDigite 'REINSTALAR' para confirmar: \e[0m"
+                read -r conf
+                if [ "$conf" = "REINSTALAR" ]; then
+                    _purge_stack_e_volumes "$nome_stack"
+                    echo -e "\e[32m✓ Limpeza concluída. Prosseguindo com instalação limpa...\e[0m"
+                    sleep 2
+                    return 1
+                else
+                    echo -e "\e[33mOperação cancelada.\e[0m"
+                    sleep 2
+                fi
+                ;;
             D)
                 echo ""
-                echo -en "\e[31mConfirma desinstalar '$nome_stack' (s/N): \e[0m"
+                echo -e "\e[31m⚠  Isso vai REMOVER a stack '$nome_stack' E TODOS os volumes (apaga dados).\e[0m"
+                echo -en "\e[31mDigite 'DESINSTALAR' para confirmar: \e[0m"
                 read -r conf
-                if [[ "$conf" =~ ^[sS]$ ]]; then
-                    docker stack rm "$nome_stack" >/dev/null 2>&1
-                    echo -e "\e[32mStack '$nome_stack' removida.\e[0m"
+                if [ "$conf" = "DESINSTALAR" ]; then
+                    _purge_stack_e_volumes "$nome_stack"
+                    echo -e "\e[32mStack '$nome_stack' e volumes removidos.\e[0m"
                     read -r -p "Pressione ENTER para voltar ao menu..." _
                     return 0
+                else
+                    echo -e "\e[33mOperação cancelada.\e[0m"
+                    sleep 2
                 fi
                 ;;
             R)
@@ -2482,6 +2502,91 @@ verificar_stack() {
                 ;;
         esac
     done
+}
+
+## Catálogo central: lista volumes (com prefixo da stack) de uma ferramenta.
+## Camada A: mapa explícito para nomes não óbvios.
+## Camada B: descoberta automática via docker volume ls.
+_volumes_da_ferramenta() {
+    local stack="$1"
+    local base
+    base=$(echo "$stack" | sed -E 's/_[a-z0-9]+$//')
+    [ -z "$base" ] && base="$stack"
+
+    local mapeados=""
+    case "$base" in
+        whaticket)            mapeados="_mysql _redis" ;;
+        chatwoot)             mapeados="_storage _public _mailer _mailers _redis" ;;
+        evolution)            mapeados="_instances _redis" ;;
+        n8n)                  mapeados="_redis" ;;
+        typebot)              mapeados="_builder _viewer" ;;
+        nextcloud)            mapeados="_data _config" ;;
+        wordpress)            mapeados="_data _db" ;;
+    esac
+
+    local v out=""
+    for v in $mapeados; do
+        out="$out ${stack}${v}"
+    done
+
+    ## Camada B: descobre demais volumes pelo prefixo da stack
+    local descobertos
+    descobertos=$(docker volume ls --format '{{.Name}}' 2>/dev/null | grep -E "^${stack}_" || true)
+    for v in $descobertos; do
+        case " $out " in
+            *" $v "*) : ;;
+            *) out="$out $v" ;;
+        esac
+    done
+
+    echo "$out"
+}
+
+## Remove uma stack e todos os seus volumes (mapeados + descobertos). Sem prompt.
+_purge_stack_e_volumes() {
+    local stack="$1"
+    [ -z "$stack" ] && return 1
+
+    echo ""
+    echo -e "\e[33m• Removendo stack '$stack'...\e[0m"
+    docker stack rm "$stack" >/dev/null 2>&1
+
+    echo -e "\e[33m• Aguardando Swarm liberar serviços...\e[0m"
+    local n
+    for n in $(seq 1 60); do
+        local running
+        running=$(docker service ls --filter "name=${stack}_" -q 2>/dev/null | wc -l)
+        [ "$running" -eq 0 ] && break
+        sleep 2
+    done
+    sleep 5
+    docker ps -a --filter "name=${stack}" -q | xargs -r docker rm -f >/dev/null 2>&1
+
+    local volumes
+    volumes=$(_volumes_da_ferramenta "$stack")
+
+    if [ -z "$(echo "$volumes" | tr -d ' ')" ]; then
+        echo -e "\e[90m   - nenhum volume associado encontrado\e[0m"
+        return 0
+    fi
+
+    echo -e "\e[33m• Removendo volumes...\e[0m"
+    local v
+    for v in $volumes; do
+        if docker volume inspect "$v" >/dev/null 2>&1; then
+            if docker volume rm "$v" >/dev/null 2>&1; then
+                echo -e "\e[32m   ✓ $v removido\e[0m"
+            else
+                sleep 5
+                if docker volume rm "$v" >/dev/null 2>&1; then
+                    echo -e "\e[32m   ✓ $v removido (2ª tentativa)\e[0m"
+                else
+                    echo -e "\e[31m   ✗ Falha ao remover $v. Rode: docker volume rm $v\e[0m"
+                fi
+            fi
+        fi
+    done
+    return 0
 }
 
 ## Painel de status / gerenciamento de todas as stacks instaladas
@@ -6262,214 +6367,7 @@ _reset_stack_volumes() {
     return 0
 }
 
-ferramenta_chatwoot_reinstalar() {
-    local sufixo="$1"
-    local stack="chatwoot${sufixo:+_$sufixo}"
-    local vols="${stack}_storage ${stack}_public ${stack}_mailer ${stack}_mailers ${stack}_redis"
-    if _reset_stack_volumes "CHATWOOT" "$stack" "$vols"; then
-        ferramenta_chatwoot "$sufixo"
-    fi
-}
-
-ferramenta_evolution_reinstalar() {
-    local sufixo="$1"
-    local stack="evolution${sufixo:+_$sufixo}"
-    local vols="${stack}_instances ${stack}_redis"
-    if _reset_stack_volumes "EVOLUTION API" "$stack" "$vols"; then
-        ferramenta_evolution "$sufixo"
-    fi
-}
-
-ferramenta_n8n_reinstalar() {
-    local sufixo="$1"
-    local stack="n8n${sufixo:+_$sufixo}"
-    local vols="${stack}_redis"
-    echo ""
-    echo -e "\e[33mObs: N8N usa Postgres compartilhado. Esta opção limpa apenas a stack e o volume Redis.\e[0m"
-    echo -e "\e[33mPara apagar dados do banco, faça DROP do schema/banco do n8n no Postgres manualmente.\e[0m"
-    sleep 3
-    if _reset_stack_volumes "N8N" "$stack" "$vols"; then
-        ferramenta_n8n "$sufixo"
-    fi
-}
-
-ferramenta_reset_all() {
-    clear
-    echo ""
-    echo -e "\e[33m═══════════════════════════════════════════════════════════════\e[0m"
-    echo -e "\e[33m  RESET-ALL — Limpeza em lote de stacks e volumes\e[0m"
-    echo -e "\e[33m═══════════════════════════════════════════════════════════════\e[0m"
-    echo ""
-    echo -e "\e[97mEscolha as ferramentas que deseja resetar (stack + volumes serão removidos):\e[0m"
-    echo ""
-
-    ## Catálogo: id|titulo|stack_base|volumes_relativos (separados por espaço, prefixados pela stack)
-    local -a CAT_ID=(   "1"           "2"          "3"               "4")
-    local -a CAT_NAME=( "Whaticket"   "Chatwoot"   "Evolution API"   "N8N")
-    local -a CAT_STACK=("whaticket"   "chatwoot"   "evolution"       "n8n")
-    local -a CAT_VOLS=( "_mysql _redis"
-                        "_storage _public _mailer _mailers _redis"
-                        "_instances _redis"
-                        "_redis")
-
-    local sufixo="$1"
-    local i
-    for i in "${!CAT_ID[@]}"; do
-        local stack="${CAT_STACK[$i]}${sufixo:+_$sufixo}"
-        local existe="\e[90m(não instalado)\e[0m"
-        if docker stack ls --format '{{.Name}}' 2>/dev/null | grep -qx "$stack"; then
-            existe="\e[32m(stack ativa)\e[0m"
-        else
-            ## verifica se há volumes residuais
-            local v
-            for v in ${CAT_VOLS[$i]}; do
-                if docker volume inspect "${stack}${v}" >/dev/null 2>&1; then
-                    existe="\e[33m(volumes residuais)\e[0m"
-                    break
-                fi
-            done
-        fi
-        echo -e "  ${amarelo}[ ${CAT_ID[$i]} ]${reset} ${branco}${CAT_NAME[$i]}${reset}  $existe"
-    done
-    echo ""
-    echo -e "\e[97mDigite os números separados por espaço (ex: ${amarelo}1 3${reset}\e[97m) ou ${amarelo}all${reset}\e[97m para todos:\e[0m"
-    read -p "> " escolha
-    echo ""
-
-    if [ -z "$escolha" ]; then
-        echo -e "\e[33mNenhuma seleção. Cancelado.\e[0m"
-        sleep 2
-        return 0
-    fi
-
-    ## Expande "all"
-    if [ "$escolha" = "all" ] || [ "$escolha" = "ALL" ]; then
-        escolha="1 2 3 4"
-    fi
-
-    ## Valida e monta lista de selecionados
-    local -a SEL_IDX=()
-    local n
-    for n in $escolha; do
-        case "$n" in
-            1|2|3|4) SEL_IDX+=("$((n-1))") ;;
-            *) echo -e "\e[31mOpção inválida ignorada: $n\e[0m" ;;
-        esac
-    done
-
-    if [ "${#SEL_IDX[@]}" -eq 0 ]; then
-        echo -e "\e[33mNenhuma seleção válida. Cancelado.\e[0m"
-        sleep 2
-        return 0
-    fi
-
-    echo -e "\e[97mSerão removidas as seguintes stacks e seus volumes:\e[0m"
-    for i in "${SEL_IDX[@]}"; do
-        local stack="${CAT_STACK[$i]}${sufixo:+_$sufixo}"
-        echo -e "  \e[31m• ${CAT_NAME[$i]}${reset} \e[90m($stack)${reset}"
-    done
-    echo ""
-    echo -e "\e[31m⚠  TODOS OS DADOS dessas aplicações serão PERDIDOS.\e[0m"
-    echo ""
-    read -p "Confirma? Digite 'RESET-ALL' para prosseguir: " confirma
-    if [ "$confirma" != "RESET-ALL" ]; then
-        echo ""
-        echo -e "\e[33mOperação cancelada.\e[0m"
-        sleep 2
-        return 0
-    fi
-
-    ## Pergunta se quer reinstalar após limpar
-    echo ""
-    read -p "Reinstalar as ferramentas após a limpeza? (Y/N): " reinstall_after
-
-    ## Executa limpeza
-    local ok_count=0
-    local fail_count=0
-    for i in "${SEL_IDX[@]}"; do
-        local stack="${CAT_STACK[$i]}${sufixo:+_$sufixo}"
-        local vols=""
-        local v
-        for v in ${CAT_VOLS[$i]}; do
-            vols="$vols ${stack}${v}"
-        done
-        echo ""
-        echo -e "\e[36m━━━ ${CAT_NAME[$i]} ━━━\e[0m"
-        ## Reaproveita _reset_stack_volumes mas pulando o prompt — então removemos diretamente
-        echo -e "\e[33m• Removendo stack '$stack'...\e[0m"
-        docker stack rm "$stack" >/dev/null 2>&1
-        for n in $(seq 1 60); do
-            local running
-            running=$(docker service ls --filter "name=${stack}_" -q 2>/dev/null | wc -l)
-            [ "$running" -eq 0 ] && break
-            sleep 2
-        done
-        sleep 5
-        docker ps -a --filter "name=${stack}" -q | xargs -r docker rm -f >/dev/null 2>&1
-
-        local stack_ok=1
-        for v in $vols; do
-            if docker volume inspect "$v" >/dev/null 2>&1; then
-                if docker volume rm "$v" >/dev/null 2>&1; then
-                    echo -e "\e[32m   ✓ $v removido\e[0m"
-                else
-                    sleep 5
-                    if docker volume rm "$v" >/dev/null 2>&1; then
-                        echo -e "\e[32m   ✓ $v removido (2ª tentativa)\e[0m"
-                    else
-                        echo -e "\e[31m   ✗ Falha ao remover $v\e[0m"
-                        stack_ok=0
-                    fi
-                fi
-            else
-                echo -e "\e[90m   - $v não existe (ok)\e[0m"
-            fi
-        done
-
-        if [ "$stack_ok" -eq 1 ]; then
-            ok_count=$((ok_count+1))
-        else
-            fail_count=$((fail_count+1))
-        fi
-    done
-
-    echo ""
-    echo -e "\e[33m═══════════════════════════════════════════════════════════════\e[0m"
-    echo -e "\e[32m✓ $ok_count limpeza(s) concluída(s)\e[0m  \e[31m✗ $fail_count falha(s)\e[0m"
-    echo -e "\e[33m═══════════════════════════════════════════════════════════════\e[0m"
-
-    ## Reinstalação opcional
-    if [ "$reinstall_after" = "Y" ] || [ "$reinstall_after" = "y" ]; then
-        echo ""
-        echo -e "\e[33mIniciando reinstalações...\e[0m"
-        sleep 2
-        for i in "${SEL_IDX[@]}"; do
-            echo ""
-            echo -e "\e[36m━━━ Reinstalando ${CAT_NAME[$i]} ━━━\e[0m"
-            sleep 1
-            case "${CAT_STACK[$i]}" in
-                whaticket) ferramenta_whaticket "$sufixo" ;;
-                chatwoot)  ferramenta_chatwoot  "$sufixo" ;;
-                evolution) ferramenta_evolution "$sufixo" ;;
-                n8n)       ferramenta_n8n       "$sufixo" ;;
-            esac
-        done
-    else
-        echo ""
-        echo -e "\e[97mPara reinstalar depois, use o menu normalmente (números 23, 2, 3, 6).\e[0m"
-    fi
-}
-
-ferramenta_whaticket_reinstalar() {
-
-    local sufixo="$1"
-    local stack="whaticket${sufixo:+_$sufixo}"
-    local vols="${stack}_mysql ${stack}_redis"
-    if _reset_stack_volumes "WHATICKET" "$stack" "$vols"; then
-        ferramenta_whaticket "$sufixo"
-    fi
-
-}
+## Funções _reinstalar e reset_all removidas — substituídas pelo submenu universal em verificar_stack().
 
 ferramenta_whaticket() {
 
@@ -45375,65 +45273,7 @@ while true; do
             fi
             ;;
 
-        23r|whaticket-reset|WHATICKET-RESET|reinstalar-whaticket)
-
-            if verificar_docker_e_portainer_traefik; then
-                STACK_NAME="whaticket${opcao2:+_$opcao2}"
-                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
-                    ferramenta_whaticket_reinstalar "$opcao2"
-                else
-                    APP_ORION="ferramenta_whaticket_reinstalar"
-                    verificar_arquivo
-                fi
-            fi
-            ;;
-
-        chatwoot-reset|CHATWOOT-RESET|reinstalar-chatwoot)
-            if verificar_docker_e_portainer_traefik; then
-                STACK_NAME="chatwoot${opcao2:+_$opcao2}"
-                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
-                    ferramenta_chatwoot_reinstalar "$opcao2"
-                else
-                    APP_ORION="ferramenta_chatwoot_reinstalar"
-                    verificar_arquivo
-                fi
-            fi
-            ;;
-
-        evolution-reset|EVOLUTION-RESET|reinstalar-evolution|evo-reset)
-            if verificar_docker_e_portainer_traefik; then
-                STACK_NAME="evolution${opcao2:+_$opcao2}"
-                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
-                    ferramenta_evolution_reinstalar "$opcao2"
-                else
-                    APP_ORION="ferramenta_evolution_reinstalar"
-                    verificar_arquivo
-                fi
-            fi
-            ;;
-
-        reset-all|RESET-ALL|reinstalar-tudo)
-            if verificar_docker_e_portainer_traefik; then
-                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
-                    ferramenta_reset_all "$opcao2"
-                else
-                    APP_ORION="ferramenta_reset_all"
-                    verificar_arquivo
-                fi
-            fi
-            ;;
-
-        n8n-reset|N8N-RESET|reinstalar-n8n)
-            if verificar_docker_e_portainer_traefik; then
-                STACK_NAME="n8n${opcao2:+_$opcao2}"
-                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
-                    ferramenta_n8n_reinstalar "$opcao2"
-                else
-                    APP_ORION="ferramenta_n8n_reinstalar"
-                    verificar_arquivo
-                fi
-            fi
-            ;;
+        ## Handlers *-reset e reset-all removidos — agora são opções [V]/[D] dentro do submenu de cada ferramenta (verificar_stack).
         2|02|chatwoot|CHATWOOT)
 
             verificar_stack "chatwoot${opcao2:+_$opcao2}" && continue || echo ""
