@@ -2238,9 +2238,9 @@ menu_instalador() {
 }
 
 menu_instalador_pg_1(){
-    echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${amarelo}[ 23 ]${reset} - ${branco}Whaticket ${vermelho}[REMOVIDO] ${reset}"
-    echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer ${verde}[1/1]${reset}              ${verde}| ${reset}  ${amarelo}[ 24 ]${reset} - ${branco}Izing ${vermelho}[REMOVIDO] ${reset}"
-    echo -e "${amarelo}[ 02 ]${reset} - ${branco}Chatwoot ${verde}[2/2]${reset}                         ${verde}| ${reset}  ${amarelo}[ 25 ]${reset} - ${branco}Odoo ${verde}[2/2] ${reset}"
+    echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${amarelo}[ 25 ]${reset} - ${branco}Odoo ${verde}[2/2] ${reset}"
+    echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer ${verde}[1/1]${reset}              ${verde}| ${reset}"
+    echo -e "${amarelo}[ 02 ]${reset} - ${branco}Chatwoot ${verde}[2/2]${reset}                         ${verde}| ${reset}"
     echo -e "${amarelo}[ 03 ]${reset} - ${branco}Evolution API ${verde}[1/1]${reset}                    ${verde}| ${reset}  ${amarelo}[ 26 ]${reset} - ${branco}Uno API ${verde}[1/1] ${reset}"
     echo -e "${amarelo}[ 04 ]${reset} - ${branco}MinIO ${verde}[1/1]${reset}                            ${verde}| ${reset}  ${amarelo}[ 27 ]${reset} - ${branco}Quepasa API ${verde}[2/2] ${reset}"
     echo -e "${amarelo}[ 05 ]${reset} - ${branco}Typebot ${verde}[2/2]${reset}                          ${verde}| ${reset}  ${amarelo}[ 28 ]${reset} - ${branco}Docuseal ${verde}[1/1] ${reset}"
