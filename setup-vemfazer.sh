@@ -6423,6 +6423,56 @@ while true; do
     ## Pergunta se as respostas estão corretas
     read -p "As respostas estão corretas? (Y/N): " confirmacao
     if [ "$confirmacao" = "Y" ] || [ "$confirmacao" = "y" ]; then
+
+        ## ===== Validação crítica de domínios =====
+        ## Erro mais comum: usuário usa o MESMO domínio para front e back, ou
+        ## o domínio do backend não tem DNS apontando para a VPS.
+        ## Sintoma: tela branca + chamadas /auth/refresh_token, /tickets, /socket.io
+        ## retornam 200 com o HTML do frontend (1028 bytes) em vez de JSON.
+
+        erro_dominios=""
+
+        if [ "$url_whaticket_back" = "$url_whaticket_front" ]; then
+            erro_dominios="Backend e Frontend NÃO podem usar o MESMO domínio.\n   Use algo como: api.seudominio.com (back) e app.seudominio.com (front)."
+        fi
+
+        if [ -z "$erro_dominios" ]; then
+            ip_vps=$(curl -s -4 --max-time 5 ifconfig.me 2>/dev/null || curl -s -4 --max-time 5 icanhazip.com 2>/dev/null)
+            if [ -n "$ip_vps" ]; then
+                ip_back=$(getent hosts "$url_whaticket_back" 2>/dev/null | awk '{print $1}' | head -1)
+                ip_front=$(getent hosts "$url_whaticket_front" 2>/dev/null | awk '{print $1}' | head -1)
+
+                if [ -z "$ip_back" ]; then
+                    erro_dominios="O domínio do BACKEND ($url_whaticket_back) não resolve no DNS.\n   Crie um registro A apontando para $ip_vps e aguarde a propagação."
+                elif [ "$ip_back" != "$ip_vps" ]; then
+                    erro_dominios="O domínio do BACKEND ($url_whaticket_back) aponta para $ip_back, mas a VPS é $ip_vps.\n   Corrija o registro A no seu provedor de DNS."
+                elif [ -z "$ip_front" ]; then
+                    erro_dominios="O domínio do FRONTEND ($url_whaticket_front) não resolve no DNS.\n   Crie um registro A apontando para $ip_vps."
+                elif [ "$ip_front" != "$ip_vps" ]; then
+                    erro_dominios="O domínio do FRONTEND ($url_whaticket_front) aponta para $ip_front, mas a VPS é $ip_vps.\n   Corrija o registro A no seu provedor de DNS."
+                fi
+            fi
+        fi
+
+        if [ -n "$erro_dominios" ]; then
+            echo ""
+            echo -e "\e[31m✗ ERRO DE CONFIGURAÇÃO DE DOMÍNIO\e[0m"
+            echo ""
+            echo -e "\e[33m   $erro_dominios\e[0m"
+            echo ""
+            echo -e "\e[33m   Sem isso o Whaticket instala mas a tela fica BRANCA: o Traefik devolve\e[0m"
+            echo -e "\e[33m   o HTML do frontend nas rotas /auth, /tickets e /socket.io.\e[0m"
+            echo ""
+            read -p "Continuar mesmo assim (NÃO recomendado)? (Y/N): " forcar_dom
+            if [ "$forcar_dom" != "Y" ] && [ "$forcar_dom" != "y" ]; then
+                clear
+                nome_whaticket
+                preencha_as_info
+                continue
+            fi
+        fi
+        ## ===== Fim da validação =====
+
         clear
         instalando_msg
         break
