@@ -2238,26 +2238,42 @@ menu_instalador() {
 }
 
 menu_instalador_pg_1(){
+    # Helper local: imprime 2 colunas com largura fixa garantida via printf.
+    # Largura coluna esquerda = 38 chars visíveis (texto sem códigos de cor).
+    _linha_pg1(){
+        local esq_txt="$1" esq_col="$2" dir_raw="$3"
+        # Monta a parte esquerda colorida + padding até 38 chars visíveis
+        local esq_colored=""
+        if [ -n "$esq_txt" ]; then
+            esq_colored="${esq_col}${esq_txt}${reset}"
+        fi
+        local pad=$(( 38 - ${#esq_txt} ))
+        [ $pad -lt 0 ] && pad=0
+        local spaces=""
+        printf -v spaces "%*s" $pad ""
+        echo -e "${esq_colored}${spaces} ${verde}| ${reset} ${dir_raw}"
+    }
+
     echo -e "${verde}>>> ${branco}COMUNICAÇÃO  &  INTELIGÊNCIA ARTIFICIAL${reset}"
     echo -e ""
-    echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${verde}--- AUTOMAÇÃO ---${reset}"
-    echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer                    ${verde}| ${reset}  ${amarelo}[ 10 ]${reset} - ${branco}N8N${reset}"
-    echo -e "                                                ${verde}| ${reset}  ${amarelo}[ 11 ]${reset} - ${branco}Typebot${reset}"
-    echo -e "${verde}--- CHAT & WHATSAPP ---${reset}                         ${verde}| ${reset}  ${amarelo}[ 12 ]${reset} - ${branco}Mautic${reset}"
-    echo -e "${amarelo}[ 02 ]${reset} - ${branco}Chatwoot                               ${verde}| ${reset}  ${amarelo}[ 13 ]${reset} - ${branco}ActivePieces${reset}"
-    echo -e "${amarelo}[ 03 ]${reset} - ${branco}Evolution API                          ${verde}| ${reset}"
-    echo -e "${amarelo}[ 04 ]${reset} - ${branco}Evolution GO                           ${verde}| ${reset}  ${verde}--- INTELIGÊNCIA ARTIFICIAL ---${reset}"
-    echo -e "${amarelo}[ 05 ]${reset} - ${branco}Uno API                                ${verde}| ${reset}  ${amarelo}[ 14 ]${reset} - ${branco}Flowise${reset}"
-    echo -e "${amarelo}[ 06 ]${reset} - ${branco}Quepasa API                            ${verde}| ${reset}  ${amarelo}[ 15 ]${reset} - ${branco}Dify AI${reset}"
-    echo -e "${amarelo}[ 07 ]${reset} - ${branco}WppConnect                             ${verde}| ${reset}  ${amarelo}[ 16 ]${reset} - ${branco}Ollama${reset}"
-    echo -e "${amarelo}[ 08 ]${reset} - ${branco}Wuzapi                                 ${verde}| ${reset}  ${amarelo}[ 17 ]${reset} - ${branco}LangFlow${reset}"
-    echo -e "${amarelo}[ 09 ]${reset} - ${branco}Transcreve Zap                         ${verde}| ${reset}  ${amarelo}[ 18 ]${reset} - ${branco}Langfuse${reset}"
-    echo -e "                                                ${verde}| ${reset}  ${amarelo}[ 19 ]${reset} - ${branco}Anything LLM${reset}"
-    echo -e "                                                ${verde}| ${reset}  ${amarelo}[ 20 ]${reset} - ${branco}Qdrant${reset}"
-    echo -e "                                                ${verde}| ${reset}  ${amarelo}[ 21 ]${reset} - ${branco}ZEP${reset}"
-    echo -e "                                                ${verde}| ${reset}  ${amarelo}[ 22 ]${reset} - ${branco}Evo AI${reset}"
-    echo -e "                                                ${verde}| ${reset}  ${amarelo}[ 23 ]${reset} - ${branco}Bolt${reset}"
-    echo -e "                                                ${verde}| ${reset}  ${amarelo}[ 24 ]${reset} - ${branco}Botpress${reset}"
+    _linha_pg1 "[ 00 ] - Testar SMTP"            "${amarelo}" "${verde}--- AUTOMAÇÃO ---${reset}"
+    _linha_pg1 "[ 01 ] - Traefik & Portainer"    "${amarelo}" "${amarelo}[ 10 ]${reset} - ${branco}N8N${reset}"
+    _linha_pg1 ""                                ""           "${amarelo}[ 11 ]${reset} - ${branco}Typebot${reset}"
+    _linha_pg1 "--- CHAT & WHATSAPP ---"         "${verde}"   "${amarelo}[ 12 ]${reset} - ${branco}Mautic${reset}"
+    _linha_pg1 "[ 02 ] - Chatwoot"               "${amarelo}" "${amarelo}[ 13 ]${reset} - ${branco}ActivePieces${reset}"
+    _linha_pg1 "[ 03 ] - Evolution API"          "${amarelo}" ""
+    _linha_pg1 "[ 04 ] - Evolution GO"           "${amarelo}" "${verde}--- INTELIGÊNCIA ARTIFICIAL ---${reset}"
+    _linha_pg1 "[ 05 ] - Uno API"                "${amarelo}" "${amarelo}[ 14 ]${reset} - ${branco}Flowise${reset}"
+    _linha_pg1 "[ 06 ] - Quepasa API"            "${amarelo}" "${amarelo}[ 15 ]${reset} - ${branco}Dify AI${reset}"
+    _linha_pg1 "[ 07 ] - WppConnect"             "${amarelo}" "${amarelo}[ 16 ]${reset} - ${branco}Ollama${reset}"
+    _linha_pg1 "[ 08 ] - Wuzapi"                 "${amarelo}" "${amarelo}[ 17 ]${reset} - ${branco}LangFlow${reset}"
+    _linha_pg1 "[ 09 ] - Transcreve Zap"         "${amarelo}" "${amarelo}[ 18 ]${reset} - ${branco}Langfuse${reset}"
+    _linha_pg1 ""                                ""           "${amarelo}[ 19 ]${reset} - ${branco}Anything LLM${reset}"
+    _linha_pg1 ""                                ""           "${amarelo}[ 20 ]${reset} - ${branco}Qdrant${reset}"
+    _linha_pg1 ""                                ""           "${amarelo}[ 21 ]${reset} - ${branco}ZEP${reset}"
+    _linha_pg1 ""                                ""           "${amarelo}[ 22 ]${reset} - ${branco}Evo AI${reset}"
+    _linha_pg1 ""                                ""           "${amarelo}[ 23 ]${reset} - ${branco}Bolt${reset}"
+    _linha_pg1 ""                                ""           "${amarelo}[ 24 ]${reset} - ${branco}Botpress${reset}"
     echo -e ""
     echo -e "${verde}>>> ${amarelo}[ 999 ]${reset} ou ${amarelo}STATUS${reset} - ${branco}Status / Gerenciar instalações (reiniciar, logs, desinstalar)${reset}                 ${verde}<<<${reset}"
     echo -e "${verde}>>> ${amarelo}[ 998 ]${reset} ou ${amarelo}RESET${reset}  - ${branco}Reset TOTAL da VPS (apaga tudo para instalar do zero)${reset}                         ${verde}<<<${reset}"
