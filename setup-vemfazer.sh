@@ -6417,7 +6417,7 @@ _whaticket_verificar() {
 
     ## 2) Backend respondendo HTTPS
     ## Testamos POST em /auth/login: backend vivo retorna 400/401/422 (validação).
-    ## 404/5xx indica problema de roteamento Traefik / cert / DNS.
+    ## 404 indica regra/roteamento incorreto; 5xx indica falha no proxy/backend após o domínio já ter sido alcançado.
     if [ -n "$back_url" ]; then
         local code
         code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
@@ -6425,9 +6425,23 @@ _whaticket_verificar() {
             "https://$back_url/auth/login" 2>/dev/null)
         if echo "$code" | grep -qE '^(200|400|401|403|422)$'; then
             echo -e "  [\e[32m OK \e[0m] Backend HTTPS respondendo (POST /auth/login → $code)"
+        elif [ "$code" = "404" ]; then
+            echo -e "  [\e[31mFAIL\e[0m] Backend HTTPS respondeu 404 (rota/regra do Traefik incorreta)"
+            echo -e "          O domínio respondeu, então o problema NÃO é IP incorreto."
+            echo -e "          Revise BACKEND_SERVER_NAME, labels do Traefik e o serviço whaticket_backend."
+            falhas=$((falhas+1))
+        elif echo "$code" | grep -qE '^5[0-9][0-9]$'; then
+            echo -e "  [\e[31mFAIL\e[0m] Backend HTTPS respondeu $code (falha interna no Traefik/cert/backend)"
+            echo -e "          O domínio respondeu, então DNS/IP já estão alcançando a VPS."
+            echo -e "          Verifique cert do Traefik e os logs: docker service logs whaticket_whaticket_backend --tail 100"
+            falhas=$((falhas+1))
+        elif [ "$code" = "000" ] || [ -z "$code" ]; then
+            echo -e "  [\e[31mFAIL\e[0m] Backend HTTPS sem resposta válida (code=${code:-000})"
+            echo -e "          Aí sim faz sentido revisar DNS de $back_url, TLS/cert e publicação da porta 443 no Traefik."
+            falhas=$((falhas+1))
         else
             echo -e "  [\e[31mFAIL\e[0m] Backend HTTPS NÃO respondeu corretamente (code=$code)"
-            echo -e "          Verifique DNS de $back_url, cert do Traefik e logs do whaticket_backend."
+            echo -e "          Verifique Traefik, cert e logs do backend para entender esse retorno inesperado."
             falhas=$((falhas+1))
         fi
     fi
