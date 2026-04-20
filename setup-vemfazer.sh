@@ -2361,6 +2361,8 @@ menu_comandos(){
   echo -e "${branco} • ${amarelo}evolution.lite${reset} - ${branco}Instala a Evolution Lite${reset}"
   echo -e "${branco} • ${amarelo}transcrevezap${reset} - ${branco}Instala o Transcreve Zap${reset}"
   echo -e "${branco} • ${amarelo}minio.bucket${reset} - ${branco}Cria Buckets Publicas no MinIO${reset}"
+  echo -e "${branco} • ${amarelo}criar-admin-whaticket${reset} - ${branco}Cria/reseta usuário admin do Whaticket e força userCreation=enabled${reset}"
+  echo -e "${branco} • ${amarelo}verificar-whaticket${reset} - ${branco}Diagnóstico completo do Whaticket (backend, frontend, admin, settings)${reset}"
   echo ""
 
   ## Quepasa
@@ -6369,6 +6371,183 @@ _reset_stack_volumes() {
 
 ## Funções _reinstalar e reset_all removidas — substituídas pelo submenu universal em verificar_stack().
 
+## ====================================================================
+## Helpers Whaticket: descoberta de containers + verificação pós-deploy
+## ====================================================================
+
+## Descobre IDs dos containers da stack whaticket.
+## Define as variáveis globais: WK_BACK_ID, WK_FRONT_ID, WK_MYSQL_ID, WK_ROOTPASS, WK_DBNAME
+_whaticket_discover() {
+    WK_BACK_ID=$(docker ps -qf name=whaticket | grep -v mysql | grep -v redis | grep -v frontend | head -1)
+    WK_FRONT_ID=$(docker ps -qf name=whaticket_frontend | head -1)
+    WK_MYSQL_ID=$(docker ps -qf name=whaticket_mysql | head -1)
+    WK_ROOTPASS=""
+    WK_DBNAME="whaticket"
+    if [ -n "$WK_MYSQL_ID" ]; then
+        WK_ROOTPASS=$(docker inspect "$WK_MYSQL_ID" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^MYSQL_ROOT_PASSWORD=//p')
+    fi
+    if [ -n "$WK_BACK_ID" ]; then
+        local d
+        d=$(docker inspect "$WK_BACK_ID" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^DB_NAME=//p')
+        [ -n "$d" ] && WK_DBNAME="$d"
+    fi
+}
+
+## Verificação pós-deploy obrigatória.
+## Confirma: backend respondendo, frontend com window.ENV, admin existente, userCreation=enabled.
+## Imprime status item-a-item e retorna 0 se tudo OK, 1 se algo falhou.
+_whaticket_verificar() {
+    local back_url="$1" front_url="$2"
+    local ok=0 falhas=0
+
+    echo ""
+    echo -e "\e[33m╔══════════════════════════════════════════════════════════╗\e[0m"
+    echo -e "\e[33m║          VERIFICAÇÃO PÓS-DEPLOY DO WHATICKET             ║\e[0m"
+    echo -e "\e[33m╚══════════════════════════════════════════════════════════╝\e[0m"
+
+    _whaticket_discover
+
+    ## 1) Containers presentes
+    if [ -n "$WK_BACK_ID" ] && [ -n "$WK_MYSQL_ID" ] && [ -n "$WK_FRONT_ID" ]; then
+        echo -e "  [\e[32m OK \e[0m] Containers (backend, frontend, mysql) ativos"
+    else
+        echo -e "  [\e[31mFAIL\e[0m] Containers ausentes (back=$WK_BACK_ID front=$WK_FRONT_ID mysql=$WK_MYSQL_ID)"
+        falhas=$((falhas+1))
+    fi
+
+    ## 2) Backend respondendo HTTPS
+    if [ -n "$back_url" ]; then
+        local code
+        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "https://$back_url/auth/refresh_token" 2>/dev/null)
+        if echo "$code" | grep -qE '^(200|400|401|403)$'; then
+            echo -e "  [\e[32m OK \e[0m] Backend HTTPS respondendo (https://$back_url → $code)"
+        else
+            echo -e "  [\e[31mFAIL\e[0m] Backend HTTPS NÃO respondeu corretamente (code=$code)"
+            echo -e "          Verifique DNS de $back_url apontando para a VPS e cert do Traefik."
+            falhas=$((falhas+1))
+        fi
+    fi
+
+    ## 3) Frontend serve window.ENV com REACT_APP_BACKEND_URL correta
+    if [ -n "$front_url" ] && [ -n "$back_url" ]; then
+        local html env_back
+        html=$(curl -s --max-time 10 "https://$front_url/index.html" 2>/dev/null)
+        env_back=$(echo "$html" | grep -oE 'REACT_APP_BACKEND_URL"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
+        if [ -n "$env_back" ] && echo "$env_back" | grep -q "$back_url"; then
+            echo -e "  [\e[32m OK \e[0m] Frontend injetando window.ENV.REACT_APP_BACKEND_URL=$env_back"
+        else
+            echo -e "  [\e[31mFAIL\e[0m] Frontend NÃO está injetando REACT_APP_BACKEND_URL correta"
+            echo -e "          Esperado conter: $back_url"
+            echo -e "          Encontrado: ${env_back:-<vazio>}"
+            echo -e "          Solução: docker service update --force whaticket_whaticket_frontend"
+            falhas=$((falhas+1))
+        fi
+    fi
+
+    ## 4) Usuário admin existe
+    if [ -n "$WK_MYSQL_ID" ] && [ -n "$WK_ROOTPASS" ]; then
+        local count
+        count=$(docker exec "$WK_MYSQL_ID" mysql -uroot -p"$WK_ROOTPASS" "$WK_DBNAME" -N -B \
+            -e "SELECT COUNT(*) FROM Users WHERE email='admin@whaticket.com';" 2>/dev/null)
+        if [ "$count" = "1" ]; then
+            echo -e "  [\e[32m OK \e[0m] Usuário admin@whaticket.com existe no banco"
+        else
+            echo -e "  [\e[31mFAIL\e[0m] Usuário admin@whaticket.com NÃO existe (count=$count)"
+            echo -e "          Solução: rode o comando 'criar-admin-whaticket' no menu."
+            falhas=$((falhas+1))
+        fi
+
+        ## 5) Setting userCreation=enabled
+        local setting
+        setting=$(docker exec "$WK_MYSQL_ID" mysql -uroot -p"$WK_ROOTPASS" "$WK_DBNAME" -N -B \
+            -e "SELECT value FROM Settings WHERE \`key\`='userCreation';" 2>/dev/null)
+        if [ "$setting" = "enabled" ]; then
+            echo -e "  [\e[32m OK \e[0m] Settings.userCreation=enabled (signup liberado)"
+        else
+            echo -e "  [\e[31mFAIL\e[0m] Settings.userCreation=$setting (signup pode falhar com ERR_NO_SETTING_FOUND)"
+            echo -e "          Solução: rode o comando 'criar-admin-whaticket' (ele também regrava o setting)."
+            falhas=$((falhas+1))
+        fi
+    else
+        echo -e "  [\e[31mFAIL\e[0m] Não foi possível inspecionar o MySQL (rootpass ausente)"
+        falhas=$((falhas+1))
+    fi
+
+    echo ""
+    if [ "$falhas" -eq 0 ]; then
+        echo -e "\e[32m✓ Whaticket validado com sucesso. Login pronto para uso.\e[0m"
+        return 0
+    else
+        echo -e "\e[31m✗ Whaticket instalado com $falhas verificação(ões) falhando.\e[0m"
+        echo -e "\e[33m   Veja a seção 'Troubleshooting Whaticket' em INSTALADOR.md.\e[0m"
+        return 1
+    fi
+}
+
+## Cria (ou recria) o usuário admin do Whaticket caso a tabela Users esteja vazia
+## ou caso a senha tenha sido perdida. Uso: comando 'criar-admin-whaticket' no menu de comandos.
+criar_admin_whaticket() {
+    clear
+    echo -e "\e[33m== Criar/Resetar admin do Whaticket ==\e[0m"
+    echo ""
+
+    local back_id mysql_id rootpass dbname hash user_count
+    back_id=$(docker ps -qf name=whaticket | grep -v mysql | grep -v redis | grep -v frontend | head -1)
+    mysql_id=$(docker ps -qf name=whaticket_mysql | head -1)
+
+    if [ -z "$back_id" ] || [ -z "$mysql_id" ]; then
+        echo -e "\e[31m❌ Containers do Whaticket (backend/mysql) não encontrados.\e[0m"
+        echo -e "\e[33m   Verifique se a stack está rodando: docker stack ls\e[0m"
+        echo ""
+        return 1
+    fi
+
+    rootpass=$(docker inspect "$mysql_id" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^MYSQL_ROOT_PASSWORD=//p')
+    dbname=$(docker inspect "$back_id" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^DB_NAME=//p')
+    [ -z "$dbname" ] && dbname=whaticket
+
+    if [ -z "$rootpass" ]; then
+        echo -e "\e[31m❌ Não consegui obter a senha root do MySQL via docker inspect.\e[0m"
+        echo ""
+        return 1
+    fi
+
+    hash=$(docker exec "$back_id" node -e "console.log(require('bcryptjs').hashSync('admin', 8))" 2>/dev/null)
+    if [ -z "$hash" ]; then
+        echo -e "\e[31m❌ Falha ao gerar hash bcrypt no container backend.\e[0m"
+        echo ""
+        return 1
+    fi
+
+    user_count=$(docker exec "$mysql_id" mysql -uroot -p"$rootpass" "$dbname" -N -B -e "SELECT COUNT(*) FROM Users WHERE email='admin@whaticket.com';" 2>/dev/null)
+
+    if [ "$user_count" = "0" ] || [ -z "$user_count" ]; then
+        docker exec "$mysql_id" mysql -uroot -p"$rootpass" "$dbname" \
+            -e "INSERT INTO Users (name,email,passwordHash,profile,tokenVersion,createdAt,updatedAt) VALUES ('Admin','admin@whaticket.com','$hash','admin',0,NOW(),NOW());" 2>&1
+        echo ""
+        echo -e "\e[32m✓ Usuário admin CRIADO.\e[0m"
+    else
+        docker exec "$mysql_id" mysql -uroot -p"$rootpass" "$dbname" \
+            -e "UPDATE Users SET passwordHash='$hash', tokenVersion=tokenVersion+1, updatedAt=NOW() WHERE email='admin@whaticket.com';" 2>&1
+        echo ""
+        echo -e "\e[32m✓ Senha do admin RESETADA.\e[0m"
+    fi
+
+    ## Garante Settings padrão (userCreation=enabled habilita signup pelo frontend)
+    docker exec "$mysql_id" mysql -uroot -p"$rootpass" "$dbname" \
+        -e "INSERT INTO Settings (\`key\`,value,createdAt,updatedAt) VALUES ('userCreation','enabled',NOW(),NOW()) ON DUPLICATE KEY UPDATE value='enabled',updatedAt=NOW();" > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        echo -e "\e[32m✓ Settings padrão garantidas (userCreation=enabled).\e[0m"
+    fi
+
+    echo ""
+    echo -e "\e[33mAcesse o painel com:\e[0m"
+    echo -e "  Email: \e[97madmin@whaticket.com\e[0m"
+    echo -e "  Senha: \e[97madmin\e[0m"
+    echo -e "\e[33m⚠  Troque a senha após o primeiro login.\e[0m"
+    echo ""
+}
+
 ferramenta_whaticket() {
 
 ## Verifica os recursos
@@ -6390,18 +6569,13 @@ preencha_as_info
 while true; do
 
     ## Pergunta o Dominio do Backend
-    echo -e "\e[97mPasso$amarelo 1/3\e[0m"
+    echo -e "\e[97mPasso$amarelo 1/2\e[0m"
     echo -en "\e[33mDigite o Dominio do BACKEND do Whaticket (ex: api.whaticket.vemfazer.com): \e[0m" && read -r url_whaticket_back
     echo ""
 
     ## Pergunta o Dominio do Frontend
-    echo -e "\e[97mPasso$amarelo 2/3\e[0m"
+    echo -e "\e[97mPasso$amarelo 2/2\e[0m"
     echo -en "\e[33mDigite o Dominio do FRONTEND do Whaticket (ex: whaticket.vemfazer.com): \e[0m" && read -r url_whaticket_front
-    echo ""
-
-    ## Pergunta o email do admin
-    echo -e "\e[97mPasso$amarelo 3/3\e[0m"
-    echo -en "\e[33mDigite o Email do Admin do Whaticket (ex: admin@vemfazer.com): \e[0m" && read -r email_admin_whaticket
     echo ""
 
     ## Limpa o terminal
@@ -6417,7 +6591,7 @@ while true; do
     echo ""
     echo -e "\e[33mDominio Frontend:\e[97m https://$url_whaticket_front\e[0m"
     echo ""
-    echo -e "\e[33mEmail do Admin:\e[97m $email_admin_whaticket\e[0m"
+    echo -e "\e[33mLogin Padrão:\e[97m admin@whaticket.com / admin\e[33m (criado automaticamente)\e[0m"
     echo ""
 
     ## Pergunta se as respostas estão corretas
@@ -6452,6 +6626,20 @@ while true; do
                     erro_dominios="O domínio do FRONTEND ($url_whaticket_front) aponta para $ip_front, mas a VPS é $ip_vps.\n   Corrija o registro A no seu provedor de DNS."
                 fi
             fi
+        fi
+
+        ## Checa rate-limit do Let's Encrypt via crt.sh (5 certs / 168h por identificador exato)
+        if [ -z "$erro_dominios" ]; then
+            for dom in "$url_whaticket_back" "$url_whaticket_front"; do
+                certs_7d=$(curl -s --max-time 8 "https://crt.sh/?q=${dom}&output=json" 2>/dev/null \
+                    | grep -oE '"not_before":"[^"]+"' \
+                    | awk -F'"' -v limite="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null)" '$4 > limite' \
+                    | wc -l)
+                if [ -n "$certs_7d" ] && [ "$certs_7d" -ge 5 ]; then
+                    erro_dominios="O domínio $dom já emitiu $certs_7d certificados Let's Encrypt nos últimos 7 dias (limite: 5).\n   O Traefik vai falhar com erro 429 (rateLimited) e a tela ficará BRANCA.\n   SOLUÇÕES: (1) use outro subdomínio (ex: api2.seudominio.com), ou (2) aguarde a janela de 7 dias expirar.\n   Detalhes: https://letsencrypt.org/docs/rate-limits/"
+                    break
+                fi
+            done
         fi
 
         if [ -n "$erro_dominios" ]; then
@@ -6806,12 +6994,40 @@ else
       echo "1/2 - [ OFF ] - Falha em: npx sequelize db:migrate"
   fi
 
-  ## Roda seeds (cria usuário admin@whaticket.com / admin)
-  docker exec "$BACK_CONTAINER_ID" npx sequelize db:seed:all > /dev/null 2>&1
+  ## Roda seeds (cria usuário admin@whaticket.com / admin) — com retry, migrations podem ainda
+  ## estar concluindo a primeira boot do backend.
+  for i in 1 2 3 4 5; do
+      docker exec "$BACK_CONTAINER_ID" npx sequelize db:seed:all > /dev/null 2>&1 && break
+      sleep 6
+  done
   if [ $? -eq 0 ]; then
       echo "2/2 - [ OK ] - Executando: npx sequelize db:seed:all (usuário admin criado)"
   else
-      echo "2/2 - [ OFF ] - Falha em: npx sequelize db:seed:all"
+      echo "2/2 - [ OFF ] - Falha em: npx sequelize db:seed:all (após 5 tentativas)"
+  fi
+
+  ## Fallback: garante usuário admin mesmo se as seeds falharem (tabela Users vazia)
+  user_count=$(docker exec "$MYSQL_CONTAINER_ID" mysql -uroot -p"$senha_mysql_whaticket" whaticket -N -B -e "SELECT COUNT(*) FROM Users;" 2>/dev/null)
+  if [ -z "$user_count" ] || [ "$user_count" = "0" ]; then
+      ADMIN_HASH=$(docker exec "$BACK_CONTAINER_ID" node -e "console.log(require('bcryptjs').hashSync('admin', 8))" 2>/dev/null)
+      if [ -n "$ADMIN_HASH" ]; then
+          docker exec "$MYSQL_CONTAINER_ID" mysql -uroot -p"$senha_mysql_whaticket" whaticket \
+              -e "INSERT INTO Users (name,email,passwordHash,profile,tokenVersion,createdAt,updatedAt) VALUES ('Admin','admin@whaticket.com','$ADMIN_HASH','admin',0,NOW(),NOW());" > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+              echo "    [ OK ] - Usuário admin criado manualmente (fallback): admin@whaticket.com / admin"
+          else
+              echo "    [ OFF ] - Falha ao criar admin manualmente. Use o comando 'criar-admin-whaticket'."
+          fi
+      fi
+  fi
+
+  ## Fallback Settings: garante 'userCreation=enabled' (necessário para signup pelo frontend)
+  docker exec "$MYSQL_CONTAINER_ID" mysql -uroot -p"$senha_mysql_whaticket" whaticket \
+      -e "INSERT INTO Settings (\`key\`,value,createdAt,updatedAt) VALUES ('userCreation','enabled',NOW(),NOW()) ON DUPLICATE KEY UPDATE value='enabled',updatedAt=NOW();" > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+      echo "    [ OK ] - Settings padrão garantidas (userCreation=enabled)"
+  else
+      echo "    [ OFF ] - Falha ao garantir Settings. Cadastro pelo frontend pode retornar ERR_NO_SETTING_FOUND."
   fi
 fi
 
@@ -6849,9 +7065,21 @@ echo -e "\e[97mFrontend:\e[33m https://$url_whaticket_front\e[0m"
 echo ""
 echo -e "\e[97mBackend:\e[33m https://$url_whaticket_back\e[0m"
 echo ""
-echo -e "\e[97mEmail Admin sugerido:\e[33m $email_admin_whaticket\e[0m"
-echo ""
 echo -e "\e[97mSenha MySQL:\e[33m $senha_mysql_whaticket\e[0m"
+echo ""
+echo -e "\e[33m╔══════════════════════════════════════════════════════════╗\e[0m"
+echo -e "\e[33m║          LOGIN PADRÃO DO WHATICKET (PRIMEIRO ACESSO)     ║\e[0m"
+echo -e "\e[33m╠══════════════════════════════════════════════════════════╣\e[0m"
+echo -e "\e[33m║\e[0m  \e[97mEmail:\e[32m admin@whaticket.com\e[0m"
+echo -e "\e[33m║\e[0m  \e[97mSenha:\e[32m admin\e[0m"
+echo -e "\e[33m╠══════════════════════════════════════════════════════════╣\e[0m"
+echo -e "\e[33m║\e[0m  \e[91m⚠  TROQUE A SENHA APÓS O PRIMEIRO LOGIN!\e[0m"
+echo -e "\e[33m║\e[0m  \e[97mEm: Configurações → Usuários → admin → Editar\e[0m"
+echo -e "\e[33m╚══════════════════════════════════════════════════════════╝\e[0m"
+echo ""
+
+## Verificação pós-deploy obrigatória — confirma que login/cadastro vão funcionar
+_whaticket_verificar "$url_whaticket_back" "$url_whaticket_front" || true
 
 }
 
@@ -10498,9 +10726,8 @@ while true; do
     
     ## Informação sobre URL do Flowise
     echo -e "\e[33mDominio do Flowise\e[97m $url_flowise\e[0m"
-    echo ""
-  
-    
+echo ""
+
     ## Pergunta se as respostas estão corretas
     read -p "As respostas estão corretas? (Y/N): " confirmacao
     if [ "$confirmacao" = "Y" ] || [ "$confirmacao" = "y" ]; then
@@ -47325,6 +47552,20 @@ while true; do
 
         minio.bucket)
             minio.bucket.setup
+            ;;
+
+        criar-admin-whaticket|criar.admin.whaticket)
+            criar_admin_whaticket
+            ;;
+
+        verificar-whaticket|verificar.whaticket|whaticket.verificar)
+            ## Diagnóstico completo: descobre URLs a partir de /dados_vps/dados_whaticket
+            _vw_back="" ; _vw_front=""
+            if [ -f /root/dados_vps/dados_whaticket ]; then
+                _vw_back=$(grep -oE 'Backend \(API\): https://[^ ]+' /root/dados_vps/dados_whaticket | head -1 | sed 's|.*https://||')
+                _vw_front=$(grep -oE 'Frontend \(Painel\): https://[^ ]+' /root/dados_vps/dados_whaticket | head -1 | sed 's|.*https://||')
+            fi
+            _whaticket_verificar "$_vw_back" "$_vw_front"
             ;;
           
         minio.bucket.delete)
