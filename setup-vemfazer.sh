@@ -2238,8 +2238,8 @@ menu_instalador() {
 }
 
 menu_instalador_pg_1(){
-    echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${amarelo}[ 23 ]${reset} - ${branco}Whaticket Community ${verde}[NOVO] ${reset}"
-    echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer ${verde}[1/1]${reset}              ${verde}| ${reset}  ${amarelo}[ 24 ]${reset} - ${branco}Izing ${verde}[NOVO] ${reset}"
+    echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${amarelo}[ 23 ]${reset} - ${branco}Whaticket ${vermelho}[REMOVIDO] ${reset}"
+    echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer ${verde}[1/1]${reset}              ${verde}| ${reset}  ${amarelo}[ 24 ]${reset} - ${branco}Izing ${vermelho}[REMOVIDO] ${reset}"
     echo -e "${amarelo}[ 02 ]${reset} - ${branco}Chatwoot ${verde}[2/2]${reset}                         ${verde}| ${reset}  ${amarelo}[ 25 ]${reset} - ${branco}Odoo ${verde}[2/2] ${reset}"
     echo -e "${amarelo}[ 03 ]${reset} - ${branco}Evolution API ${verde}[1/1]${reset}                    ${verde}| ${reset}  ${amarelo}[ 26 ]${reset} - ${branco}Uno API ${verde}[1/1] ${reset}"
     echo -e "${amarelo}[ 04 ]${reset} - ${branco}MinIO ${verde}[1/1]${reset}                            ${verde}| ${reset}  ${amarelo}[ 27 ]${reset} - ${branco}Quepasa API ${verde}[2/2] ${reset}"
@@ -2361,8 +2361,6 @@ menu_comandos(){
   echo -e "${branco} • ${amarelo}evolution.lite${reset} - ${branco}Instala a Evolution Lite${reset}"
   echo -e "${branco} • ${amarelo}transcrevezap${reset} - ${branco}Instala o Transcreve Zap${reset}"
   echo -e "${branco} • ${amarelo}minio.bucket${reset} - ${branco}Cria Buckets Publicas no MinIO${reset}"
-  echo -e "${branco} • ${amarelo}criar-admin-whaticket${reset} - ${branco}Cria/reseta usuário admin do Whaticket e força userCreation=enabled${reset}"
-  echo -e "${branco} • ${amarelo}verificar-whaticket${reset} - ${branco}Diagnóstico completo do Whaticket (backend, frontend, admin, settings)${reset}"
   echo ""
 
   ## Quepasa
@@ -6393,6 +6391,12 @@ _whaticket_discover() {
     fi
 }
 
+_whaticket_discover_services() {
+    WK_BACK_SERVICE=$(docker service ls --format '{{.Name}}' 2>/dev/null | grep -E '^whaticket(_[[:alnum:]_-]+)?_whaticket(_[[:alnum:]_-]+)?_backend$' | head -1)
+    WK_FRONT_SERVICE=$(docker service ls --format '{{.Name}}' 2>/dev/null | grep -E '^whaticket(_[[:alnum:]_-]+)?_whaticket(_[[:alnum:]_-]+)?_frontend$' | head -1)
+    WK_TRAEFIK_SERVICE=$(docker service ls --format '{{.Name}}' 2>/dev/null | grep -E '^traefik_traefik$' | head -1)
+}
+
 ## Verificação pós-deploy obrigatória.
 ## Confirma: backend respondendo, frontend com window.ENV, admin existente, userCreation=enabled.
 ## Imprime status item-a-item e retorna 0 se tudo OK, 1 se algo falhou.
@@ -6566,539 +6570,121 @@ criar_admin_whaticket() {
     echo ""
 }
 
-ferramenta_whaticket() {
-
-## Verifica os recursos
-recursos 2 2 || return
-
-## Limpa o terminal
-clear
-
-## Ativa a função dados para pegar os dados da vps
-dados
-
-## Mostra o nome da aplicação
-nome_whaticket
-
-## Mostra mensagem para preencher informações
-preencha_as_info
-
-## Inicia um Loop até os dados estarem certos
-while true; do
-
-    ## Pergunta o Dominio do Backend
-    echo -e "\e[97mPasso$amarelo 1/2\e[0m"
-    echo -en "\e[33mDigite o Dominio do BACKEND do Whaticket (ex: api.whaticket.vemfazer.com): \e[0m" && read -r url_whaticket_back
-    echo ""
-
-    ## Pergunta o Dominio do Frontend
-    echo -e "\e[97mPasso$amarelo 2/2\e[0m"
-    echo -en "\e[33mDigite o Dominio do FRONTEND do Whaticket (ex: whaticket.vemfazer.com): \e[0m" && read -r url_whaticket_front
-    echo ""
-
-    ## Limpa o terminal
+## Correção guiada do Whaticket para cenários em que frontend/mysql estão OK,
+## mas o backend retorna 500/404/000 no subdomínio novo.
+corrigir_whaticket() {
     clear
-
-    ## Mostra o nome da aplicação
-    nome_whaticket
-
-    ## Mostra mensagem para verificar as informações
-    conferindo_as_info
-
-    echo -e "\e[33mDominio Backend:\e[97m https://$url_whaticket_back\e[0m"
-    echo ""
-    echo -e "\e[33mDominio Frontend:\e[97m https://$url_whaticket_front\e[0m"
-    echo ""
-    echo -e "\e[33mLogin Padrão:\e[97m admin@whaticket.com / admin\e[33m (criado automaticamente)\e[0m"
+    echo -e "\e[33m== Correção do Whaticket ==\e[0m"
     echo ""
 
-    ## Pergunta se as respostas estão corretas
-    read -p "As respostas estão corretas? (Y/N): " confirmacao
-    if [ "$confirmacao" = "Y" ] || [ "$confirmacao" = "y" ]; then
+    local back_url front_url seed_ok=1 code=""
 
-        ## ===== Validação crítica de domínios =====
-        ## Erro mais comum: usuário usa o MESMO domínio para front e back, ou
-        ## o domínio do backend não tem DNS apontando para a VPS.
-        ## Sintoma: tela branca + chamadas /auth/refresh_token, /tickets, /socket.io
-        ## retornam 200 com o HTML do frontend (1028 bytes) em vez de JSON.
+    _whaticket_discover
+    _whaticket_discover_services
 
-        erro_dominios=""
-
-        if [ "$url_whaticket_back" = "$url_whaticket_front" ]; then
-            erro_dominios="Backend e Frontend NÃO podem usar o MESMO domínio.\n   Use algo como: api.seudominio.com (back) e app.seudominio.com (front)."
-        fi
-
-        if [ -z "$erro_dominios" ]; then
-            ip_vps=$(curl -s -4 --max-time 5 ifconfig.me 2>/dev/null || curl -s -4 --max-time 5 icanhazip.com 2>/dev/null)
-            if [ -n "$ip_vps" ]; then
-                ip_back=$(getent hosts "$url_whaticket_back" 2>/dev/null | awk '{print $1}' | head -1)
-                ip_front=$(getent hosts "$url_whaticket_front" 2>/dev/null | awk '{print $1}' | head -1)
-
-                if [ -z "$ip_back" ]; then
-                    erro_dominios="O domínio do BACKEND ($url_whaticket_back) não resolve no DNS.\n   Crie um registro A apontando para $ip_vps e aguarde a propagação."
-                elif [ "$ip_back" != "$ip_vps" ]; then
-                    erro_dominios="O domínio do BACKEND ($url_whaticket_back) aponta para $ip_back, mas a VPS é $ip_vps.\n   Corrija o registro A no seu provedor de DNS."
-                elif [ -z "$ip_front" ]; then
-                    erro_dominios="O domínio do FRONTEND ($url_whaticket_front) não resolve no DNS.\n   Crie um registro A apontando para $ip_vps."
-                elif [ "$ip_front" != "$ip_vps" ]; then
-                    erro_dominios="O domínio do FRONTEND ($url_whaticket_front) aponta para $ip_front, mas a VPS é $ip_vps.\n   Corrija o registro A no seu provedor de DNS."
-                fi
-            fi
-        fi
-
-        ## Checa rate-limit do Let's Encrypt via crt.sh (5 certs / 168h por identificador exato)
-        if [ -z "$erro_dominios" ]; then
-            for dom in "$url_whaticket_back" "$url_whaticket_front"; do
-                certs_7d=$(curl -s --max-time 8 "https://crt.sh/?q=${dom}&output=json" 2>/dev/null \
-                    | grep -oE '"not_before":"[^"]+"' \
-                    | awk -F'"' -v limite="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null)" '$4 > limite' \
-                    | wc -l)
-                if [ -n "$certs_7d" ] && [ "$certs_7d" -ge 5 ]; then
-                    erro_dominios="O domínio $dom já emitiu $certs_7d certificados Let's Encrypt nos últimos 7 dias (limite: 5).\n   O Traefik vai falhar com erro 429 (rateLimited) e a tela ficará BRANCA.\n   SOLUÇÕES: (1) use outro subdomínio (ex: api2.seudominio.com), ou (2) aguarde a janela de 7 dias expirar.\n   Detalhes: https://letsencrypt.org/docs/rate-limits/"
-                    break
-                fi
-            done
-        fi
-
-        if [ -n "$erro_dominios" ]; then
-            echo ""
-            echo -e "\e[31m✗ ERRO DE CONFIGURAÇÃO DE DOMÍNIO\e[0m"
-            echo ""
-            echo -e "\e[33m   $erro_dominios\e[0m"
-            echo ""
-            echo -e "\e[33m   Sem isso o Whaticket instala mas a tela fica BRANCA: o Traefik devolve\e[0m"
-            echo -e "\e[33m   o HTML do frontend nas rotas /auth, /tickets e /socket.io.\e[0m"
-            echo ""
-            read -p "Continuar mesmo assim (NÃO recomendado)? (Y/N): " forcar_dom
-            if [ "$forcar_dom" != "Y" ] && [ "$forcar_dom" != "y" ]; then
-                clear
-                nome_whaticket
-                preencha_as_info
-                continue
-            fi
-        fi
-        ## ===== Fim da validação =====
-
-        clear
-        instalando_msg
-        break
-    else
-        clear
-        nome_whaticket
-        preencha_as_info
+    if [ -f /root/dados_vps/dados_whaticket ]; then
+        back_url=$(grep -oE 'Backend \(API\): https://[^ ]+' /root/dados_vps/dados_whaticket | head -1 | sed 's|.*https://||')
+        front_url=$(grep -oE 'Frontend \(Painel\): https://[^ ]+' /root/dados_vps/dados_whaticket | head -1 | sed 's|.*https://||')
     fi
-done
 
-## Mensagem de Passo
-echo -e "\e[97m• INICIANDO A INSTALAÇÃO DO WHATICKET \e[33m[1/4]\e[0m"
-echo ""
-sleep 1
-
-telemetria Whaticket iniciado
-
-## Ativa a função dados para pegar os dados da vps
-dados
-
-## Detecta volumes antigos do Whaticket (causa Access denied no MySQL após reinstalação)
-vol_mysql_old="whaticket${1:+_$1}_mysql"
-vol_redis_old="whaticket${1:+_$1}_redis"
-stack_old="whaticket${1:+_$1}"
-volumes_existentes=""
-docker volume inspect "$vol_mysql_old" >/dev/null 2>&1 && volumes_existentes="$volumes_existentes $vol_mysql_old"
-docker volume inspect "$vol_redis_old" >/dev/null 2>&1 && volumes_existentes="$volumes_existentes $vol_redis_old"
-
-if [ -n "$volumes_existentes" ]; then
-    echo ""
-    echo -e "\e[33m⚠  Detectados volumes antigos do Whaticket:\e[0m"
-    for v in $volumes_existentes; do echo -e "\e[97m   - $v\e[0m"; done
-    echo ""
-    echo -e "\e[33mEsses volumes contêm a senha do MySQL gerada na instalação anterior.\e[0m"
-    echo -e "\e[33mSe você reinstalar sem removê-los, o backend dará 'Access denied for user whaticket'.\e[0m"
-    echo ""
-    read -p "Remover volumes antigos e reinstalar do zero? (Y/N): " limpar_vols
-    if [ "$limpar_vols" = "Y" ] || [ "$limpar_vols" = "y" ]; then
-        echo ""
-        echo -e "\e[33mRemovendo stack e volumes antigos...\e[0m"
-        docker stack rm "$stack_old" >/dev/null 2>&1
-        ## Aguarda Swarm liberar os volumes (services precisam sumir antes)
-        for i in $(seq 1 30); do
-            running=$(docker service ls --filter "name=${stack_old}_" -q | wc -l)
-            [ "$running" -eq 0 ] && break
-            sleep 2
-        done
-        sleep 5
-        for v in $volumes_existentes; do
-            if docker volume rm "$v" >/dev/null 2>&1; then
-                echo -e "\e[32m   ✓ $v removido\e[0m"
-            else
-                echo -e "\e[31m   ✗ Falha ao remover $v (pode estar em uso). Tente: docker volume rm $v\e[0m"
-            fi
-        done
-        echo ""
-    else
-        echo ""
-        echo -e "\e[31m⚠  Mantendo volumes antigos. Se a instalação falhar com 'Access denied', rode:\e[0m"
-        echo -e "\e[97m   docker stack rm $stack_old && docker volume rm$volumes_existentes\e[0m"
-        echo ""
-        sleep 3
-    fi
-fi
-
-
-## Gera senhas aleatórias para MySQL e JWT
-senha_mysql_whaticket=$(openssl rand -hex 16)
-jwt_secret_whaticket=$(openssl rand -hex 32)
-jwt_refresh_whaticket=$(openssl rand -hex 32)
-
-## Mensagem de Passo
-echo -e "\e[97m• CRIANDO STACK DO WHATICKET \e[33m[2/4]\e[0m"
-echo ""
-sleep 1
-
-## Criando a stack whaticket.yaml
-cat > whaticket${1:+_$1}.yaml <<EOL
-version: "3.7"
-services:
-
-## --------------------------- WHATICKET --------------------------- ##
-
-  whaticket${1:+_$1}_mysql:
-    image: mariadb:10.6
-    command: --innodb-flush-log-at-trx-commit=2 --innodb-buffer-pool-size=512M --max_connections=500
-    environment:
-      - MYSQL_ROOT_PASSWORD=$senha_mysql_whaticket
-      - MYSQL_DATABASE=whaticket
-      - MYSQL_USER=whaticket
-      - MYSQL_PASSWORD=$senha_mysql_whaticket
-      - TZ=America/Sao_Paulo
-    volumes:
-      - whaticket${1:+_$1}_mysql:/var/lib/mysql
-    networks:
-      - $nome_rede_interna
-    deploy:
-      placement:
-        constraints:
-          - node.role == manager
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1024M
-
-## --------------------------- WHATICKET --------------------------- ##
-
-  whaticket${1:+_$1}_redis:
-    image: redis:latest
-    command: ["redis-server", "--appendonly", "yes", "--port", "6379"]
-    volumes:
-      - whaticket${1:+_$1}_redis:/data
-    networks:
-      - $nome_rede_interna
-    deploy:
-      placement:
-        constraints:
-          - node.role == manager
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
-
-## --------------------------- WHATICKET --------------------------- ##
-
-  whaticket${1:+_$1}_backend:
-    image: ghcr.io/canove/whaticket-community-backend:master
-    networks:
-      - $nome_rede_interna
-    environment:
-      - NODE_ENV=production
-      - BACKEND_URL=https://$url_whaticket_back
-      - FRONTEND_URL=https://$url_whaticket_front
-      - PROXY_PORT=443
-      - PORT=3000
-      - DB_DIALECT=mysql
-      - DB_HOST=whaticket${1:+_$1}_mysql
-      - DB_PORT=3306
-      - DB_USER=whaticket
-      - DB_PASS=$senha_mysql_whaticket
-      - DB_NAME=whaticket
-      - JWT_SECRET=$jwt_secret_whaticket
-      - JWT_REFRESH_SECRET=$jwt_refresh_whaticket
-      - REDIS_URI=redis://whaticket${1:+_$1}_redis:6379
-      - REDIS_OPT_LIMITER_MAX=1
-      - REDIS_OPT_LIMITER_DURATION=3000
-      - USER_LIMIT=10000
-      - CONNECTIONS_LIMIT=100000
-      - CLOSED_SEND_BY_ME=true
-      - CHROME_ARGS=--no-sandbox --disable-setuid-sandbox
-      - TZ=America/Sao_Paulo
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 5
-        window: 120s
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1024M
-      labels:
-        - traefik.enable=true
-        - traefik.http.routers.whaticket${1:+_$1}_backend.rule=Host(\`$url_whaticket_back\`)
-        - traefik.http.routers.whaticket${1:+_$1}_backend.entrypoints=websecure
-        - traefik.http.routers.whaticket${1:+_$1}_backend.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.whaticket${1:+_$1}_backend.priority=1
-        - traefik.http.routers.whaticket${1:+_$1}_backend.service=whaticket${1:+_$1}_backend
-        - traefik.http.services.whaticket${1:+_$1}_backend.loadbalancer.server.port=3000
-        - traefik.http.services.whaticket${1:+_$1}_backend.loadbalancer.passHostHeader=true
-
-## --------------------------- WHATICKET --------------------------- ##
-
-  whaticket${1:+_$1}_frontend:
-    image: ghcr.io/canove/whaticket-community-frontend:master
-    networks:
-      - $nome_rede_interna
-    environment:
-      - URL_BACKEND=whaticket${1:+_$1}_backend:3000
-      - URL_FRONTEND=$url_whaticket_front
-      - REACT_APP_BACKEND_URL=https://$url_whaticket_back/
-      - BACKEND_SERVER_NAME=$url_whaticket_back
-      - FRONTEND_SERVER_NAME=$url_whaticket_front
-      - TZ=America/Sao_Paulo
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 5
-        window: 120s
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
-      labels:
-        - traefik.enable=true
-        - traefik.http.routers.whaticket${1:+_$1}_frontend.rule=Host(\`$url_whaticket_front\`)
-        - traefik.http.routers.whaticket${1:+_$1}_frontend.entrypoints=websecure
-        - traefik.http.routers.whaticket${1:+_$1}_frontend.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.whaticket${1:+_$1}_frontend.priority=1
-        - traefik.http.routers.whaticket${1:+_$1}_frontend.service=whaticket${1:+_$1}_frontend
-        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.server.port=80
-        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.passHostHeader=true
-
-## --------------------------- WHATICKET --------------------------- ##
-
-volumes:
-  whaticket${1:+_$1}_mysql:
-    external: true
-    name: whaticket${1:+_$1}_mysql
-  whaticket${1:+_$1}_redis:
-    external: true
-    name: whaticket${1:+_$1}_redis
-
-networks:
-  $nome_rede_interna:
-    external: true
-    name: $nome_rede_interna
-EOL
-if [ $? -eq 0 ]; then
-    echo "1/3 - [ OK ] - Criando Stack"
-else
-    echo "1/3 - [ OFF ] - Criando Stack"
-    echo "Não foi possivel criar a stack do Whaticket"
-fi
-STACK_NAME="whaticket${1:+_$1}"
-if ! stack_editavel; then
-    echo ""
-    echo "Instalação interrompida porque o deploy da stack Whaticket falhou."
-    return 1
-fi
-
-## Mensagem de Passo
-echo -e "\e[97m• BAIXANDO IMAGENS DO WHATICKET \e[33m[3/5]\e[0m"
-echo ""
-sleep 1
-
-pull mariadb:10.6 redis:latest ghcr.io/canove/whaticket-community-backend:master ghcr.io/canove/whaticket-community-frontend:master
-
-## Mensagem de Passo
-echo -e "\e[97m• VERIFICANDO SERVIÇO \e[33m[4/5]\e[0m"
-echo ""
-sleep 1
-
-wait_stack whaticket${1:+_$1}_whaticket${1:+_$1}_mysql whaticket${1:+_$1}_whaticket${1:+_$1}_redis whaticket${1:+_$1}_whaticket${1:+_$1}_backend whaticket${1:+_$1}_whaticket${1:+_$1}_frontend
-
-## Validação pós-deploy do frontend e backend (detecta loop de reinício / Rejected / Failed)
-front_service_name="whaticket${1:+_$1}_whaticket${1:+_$1}_frontend"
-back_service_name="whaticket${1:+_$1}_whaticket${1:+_$1}_backend"
-echo ""
-echo -e "\e[33mAguardando 60s para validar estabilidade do frontend e backend...\e[0m"
-sleep 60
-
-check_service_health() {
-    local svc="$1"
-    local label="$2"
-    local states
-    states=$(docker service ps "$svc" --no-trunc --format '{{.CurrentState}} | {{.Error}}' 2>/dev/null)
-    local running failed
-    running=$(echo "$states" | grep -c 'Running')
-    failed=$(echo "$states" | grep -cE 'Rejected|Failed|Shutdown')
-    if [ "$running" -eq 0 ] || [ "$failed" -ge 3 ]; then
-        echo ""
-        echo -e "\e[31m❌ $label do Whaticket falhou (sem replica em Running ou múltiplos Rejected/Failed/Shutdown).\e[0m"
-        echo -e "\e[31m   Diagnóstico:\e[0m"
-        echo -e "\e[97m     docker service logs $svc --tail 100 --no-trunc\e[0m"
-        echo -e "\e[97m     docker service ps $svc --no-trunc\e[0m"
-        echo -e "\e[31m   Causas comuns ($label):\e[0m"
-        echo -e "\e[97m     1) DNS não aponta para esta VPS (frontend e backend)\e[0m"
-        echo -e "\e[97m     2) RAM insuficiente — Whaticket exige 4GB mínimo\e[0m"
-        echo -e "\e[97m     3) URL_BACKEND interno errado (deve ser nome do serviço:porta interna)\e[0m"
-        echo -e "\e[97m     4) REACT_APP_BACKEND_URL sem barra final\e[0m"
-        echo -e "\e[97m     5) BACKEND_SERVER_NAME / FRONTEND_SERVER_NAME ausentes\e[0m"
+    if [ -z "$WK_BACK_ID" ] || [ -z "$WK_MYSQL_ID" ]; then
+        echo -e "\e[31m❌ Containers backend/mysql do Whaticket não foram encontrados.\e[0m"
         echo ""
         return 1
-    else
-        echo -e "\e[32m✓ $label do Whaticket estável.\e[0m"
-        return 0
     fi
+
+    echo -e "\e[33m1/5 - Reaplicando migrations do backend...\e[0m"
+    docker exec "$WK_BACK_ID" npx sequelize db:migrate >/dev/null 2>&1 || true
+
+    echo -e "\e[33m2/5 - Reaplicando seeds do Whaticket com retry...\e[0m"
+    seed_ok=1
+    for i in 1 2 3 4 5; do
+        docker exec "$WK_BACK_ID" npx sequelize db:seed:all >/dev/null 2>&1 && break
+        seed_ok=0
+        sleep 6
+    done
+    [ "$seed_ok" -eq 1 ] && echo -e "\e[32m   ✓ Seeds reaplicadas.\e[0m" || echo -e "\e[33m   ⚠ Seeds não concluíram; vou seguir com correção forçada do admin/settings.\e[0m"
+
+    echo -e "\e[33m3/5 - Recriando admin e liberando signup...\e[0m"
+    criar_admin_whaticket
+
+    echo -e "\e[33m4/5 - Forçando atualização dos serviços backend/frontend...\e[0m"
+    [ -n "$WK_BACK_SERVICE" ] && docker service update --force "$WK_BACK_SERVICE" >/dev/null 2>&1 || true
+    [ -n "$WK_FRONT_SERVICE" ] && docker service update --force "$WK_FRONT_SERVICE" >/dev/null 2>&1 || true
+    sleep 15
+
+    echo -e "\e[33m5/5 - Recarregando Traefik para refazer o roteamento/SSL...\e[0m"
+    [ -n "$WK_TRAEFIK_SERVICE" ] && docker service update --force "$WK_TRAEFIK_SERVICE" >/dev/null 2>&1 || true
+    sleep 20
+
+    echo ""
+    if [ -n "$back_url" ]; then
+        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 -X POST -H "Content-Type: application/json" -d '{}' "https://$back_url/auth/login" 2>/dev/null)
+    fi
+
+    if echo "$code" | grep -qE '^(200|400|401|403|422)$'; then
+        echo -e "\e[32m✓ Correção aplicada com sucesso. Backend voltou a responder ($code).\e[0m"
+    else
+        echo -e "\e[33m⚠ Backend ainda responde code=${code:-000}. Vou recriar o Traefik/SSL automaticamente...\e[0m"
+        if _traefik_reinstall_force; then
+            [ -n "$WK_BACK_SERVICE" ] && docker service update --force "$WK_BACK_SERVICE" >/dev/null 2>&1 || true
+            [ -n "$WK_FRONT_SERVICE" ] && docker service update --force "$WK_FRONT_SERVICE" >/dev/null 2>&1 || true
+            sleep 20
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -X POST -H "Content-Type: application/json" -d '{}' "https://$back_url/auth/login" 2>/dev/null)
+            if echo "$code" | grep -qE '^(200|400|401|403|422)$'; then
+                echo -e "\e[32m✓ Correção pesada concluída. Backend voltou a responder ($code).\e[0m"
+            else
+                echo -e "\e[31m✗ Mesmo após recriar o Traefik/SSL, o backend ainda responde code=${code:-000}.\e[0m"
+            fi
+        else
+            echo -e "\e[31m✗ Falha ao recriar automaticamente o Traefik/SSL.\e[0m"
+        fi
+    fi
+
+    echo ""
+    [ -n "$back_url" ] || back_url="${_vw_back:-}"
+    [ -n "$front_url" ] || front_url="${_vw_front:-}"
+    _whaticket_verificar "$back_url" "$front_url" || true
 }
 
-check_service_health "$back_service_name" "Backend"
-check_service_health "$front_service_name" "Frontend"
+_traefik_reinstall_force() {
+    if [ ! -f /root/traefik.yaml ]; then
+        return 1
+    fi
 
-## Mensagem de Passo
-echo -e "\e[97m• MIGRANDO BANCO DE DADOS E CRIANDO USUÁRIO ADMIN \e[33m[5/5]\e[0m"
-echo ""
-sleep 5
+    docker stack rm traefik >/dev/null 2>&1
+    local tent=0
+    while docker stack ls --format "{{.Name}}" 2>/dev/null | grep -q "^traefik$"; do
+        sleep 2
+        tent=$((tent+1))
+        [ $tent -ge 30 ] && break
+    done
 
-## Aguarda o container do backend aparecer e ficar pronto
-back_container_name="whaticket${1:+_$1}_whaticket${1:+_$1}_backend"
-max_wait_time=900
-wait_interval=30
-elapsed_time=0
-
-while [ $elapsed_time -lt $max_wait_time ]; do
-  BACK_CONTAINER_ID=$(docker ps -q --filter "name=$back_container_name")
-  if [ -n "$BACK_CONTAINER_ID" ]; then
-    break
-  fi
-  sleep $wait_interval
-  elapsed_time=$((elapsed_time + wait_interval))
-done
-
-if [ -z "$BACK_CONTAINER_ID" ]; then
-  echo "1/2 - [ OFF ] - Container do backend não encontrado após $max_wait_time segundos."
-else
-  ## Aguarda o MySQL aceitar conexões
-  mysql_container_name="whaticket${1:+_$1}_whaticket${1:+_$1}_mysql"
-  MYSQL_CONTAINER_ID=$(docker ps -q --filter "name=$mysql_container_name")
-  for i in $(seq 1 60); do
-    docker exec "$MYSQL_CONTAINER_ID" mysqladmin ping -uroot -p"$senha_mysql_whaticket" --silent > /dev/null 2>&1 && break
     sleep 5
-  done
+    docker volume rm volume_swarm_certificates >/dev/null 2>&1 || true
+    docker volume create volume_swarm_certificates >/dev/null 2>&1 || true
+    docker stack deploy --prune --resolve-image always -c /root/traefik.yaml traefik >/dev/null 2>&1 || return 1
+    wait_stack "traefik" >/dev/null 2>&1 || true
+    sleep 45
+    return 0
+}
 
-  ## Roda migrations
-  docker exec "$BACK_CONTAINER_ID" npx sequelize db:migrate > /dev/null 2>&1
-  if [ $? -eq 0 ]; then
-      echo "1/2 - [ OK ] - Executando: npx sequelize db:migrate"
-  else
-      echo "1/2 - [ OFF ] - Falha em: npx sequelize db:migrate"
-  fi
-
-  ## Roda seeds (cria usuário admin@whaticket.com / admin) — com retry, migrations podem ainda
-  ## estar concluindo a primeira boot do backend.
-  for i in 1 2 3 4 5; do
-      docker exec "$BACK_CONTAINER_ID" npx sequelize db:seed:all > /dev/null 2>&1 && break
-      sleep 6
-  done
-  if [ $? -eq 0 ]; then
-      echo "2/2 - [ OK ] - Executando: npx sequelize db:seed:all (usuário admin criado)"
-  else
-      echo "2/2 - [ OFF ] - Falha em: npx sequelize db:seed:all (após 5 tentativas)"
-  fi
-
-  ## Fallback: garante usuário admin mesmo se as seeds falharem (tabela Users vazia)
-  user_count=$(docker exec "$MYSQL_CONTAINER_ID" mysql -uroot -p"$senha_mysql_whaticket" whaticket -N -B -e "SELECT COUNT(*) FROM Users;" 2>/dev/null)
-  if [ -z "$user_count" ] || [ "$user_count" = "0" ]; then
-      ADMIN_HASH=$(docker exec "$BACK_CONTAINER_ID" node -e "console.log(require('bcryptjs').hashSync('admin', 8))" 2>/dev/null)
-      if [ -n "$ADMIN_HASH" ]; then
-          docker exec "$MYSQL_CONTAINER_ID" mysql -uroot -p"$senha_mysql_whaticket" whaticket \
-              -e "INSERT INTO Users (name,email,passwordHash,profile,tokenVersion,createdAt,updatedAt) VALUES ('Admin','admin@whaticket.com','$ADMIN_HASH','admin',0,NOW(),NOW());" > /dev/null 2>&1
-          if [ $? -eq 0 ]; then
-              echo "    [ OK ] - Usuário admin criado manualmente (fallback): admin@whaticket.com / admin"
-          else
-              echo "    [ OFF ] - Falha ao criar admin manualmente. Use o comando 'criar-admin-whaticket'."
-          fi
-      fi
-  fi
-
-  ## Fallback Settings: garante 'userCreation=enabled' (necessário para signup pelo frontend)
-  docker exec "$MYSQL_CONTAINER_ID" mysql -uroot -p"$senha_mysql_whaticket" whaticket \
-      -e "INSERT INTO Settings (\`key\`,value,createdAt,updatedAt) VALUES ('userCreation','enabled',NOW(),NOW()) ON DUPLICATE KEY UPDATE value='enabled',updatedAt=NOW();" > /dev/null 2>&1
-  if [ $? -eq 0 ]; then
-      echo "    [ OK ] - Settings padrão garantidas (userCreation=enabled)"
-  else
-      echo "    [ OFF ] - Falha ao garantir Settings. Cadastro pelo frontend pode retornar ERR_NO_SETTING_FOUND."
-  fi
-fi
-
-telemetria Whaticket finalizado
-
-## Salvando informações da instalação dentro de /dados_vps/
-cd dados_vps
-
-cat > dados_whaticket${1:+_$1} <<EOL
-[ WHATICKET ]
-
-Backend (API): https://$url_whaticket_back
-Frontend (Painel): https://$url_whaticket_front
-
-Login Admin (criado automaticamente pelas seeds):
-  Email: admin@whaticket.com
-  Senha: admin
-
-Senha MySQL: $senha_mysql_whaticket
-
-Obs: Crie o usuário admin acessando o frontend (cadastro inicial)
-ou execute as seeds dentro do container backend.
-EOL
-
-cd
-cd
-
-wait_30_sec
-instalado_msg
-guarde_os_dados_msg
-
-echo -e "\e[32m[ WHATICKET ]\e[0m"
-echo ""
-echo -e "\e[97mFrontend:\e[33m https://$url_whaticket_front\e[0m"
-echo ""
-echo -e "\e[97mBackend:\e[33m https://$url_whaticket_back\e[0m"
-echo ""
-echo -e "\e[97mSenha MySQL:\e[33m $senha_mysql_whaticket\e[0m"
-echo ""
-echo -e "\e[33m╔══════════════════════════════════════════════════════════╗\e[0m"
-echo -e "\e[33m║          LOGIN PADRÃO DO WHATICKET (PRIMEIRO ACESSO)     ║\e[0m"
-echo -e "\e[33m╠══════════════════════════════════════════════════════════╣\e[0m"
-echo -e "\e[33m║\e[0m  \e[97mEmail:\e[32m admin@whaticket.com\e[0m"
-echo -e "\e[33m║\e[0m  \e[97mSenha:\e[32m admin\e[0m"
-echo -e "\e[33m╠══════════════════════════════════════════════════════════╣\e[0m"
-echo -e "\e[33m║\e[0m  \e[91m⚠  TROQUE A SENHA APÓS O PRIMEIRO LOGIN!\e[0m"
-echo -e "\e[33m║\e[0m  \e[97mEm: Configurações → Usuários → admin → Editar\e[0m"
-echo -e "\e[33m╚══════════════════════════════════════════════════════════╝\e[0m"
-echo ""
-
-## Verificação pós-deploy obrigatória — confirma que login/cadastro vão funcionar
-_whaticket_verificar "$url_whaticket_back" "$url_whaticket_front" || true
-
+ferramenta_whaticket() {
+    clear
+    echo ""
+    echo -e "\e[33m=========================================\e[0m"
+    echo -e "\e[97m  WHATICKET — REMOVIDO DO INSTALADOR\e[0m"
+    echo -e "\e[33m=========================================\e[0m"
+    echo ""
+    echo -e "\e[97mA instalação automatizada do Whaticket foi descontinuada\e[0m"
+    echo -e "\e[97mneste instalador devido a problemas recorrentes de deploy\e[0m"
+    echo -e "\e[97m(login, cadastro e SSL/Traefik).\e[0m"
+    echo ""
+    echo -e "\e[97mUse uma alternativa suportada (ex.: Chatwoot — opção 02)\e[0m"
+    echo -e "\e[97mou instale o Whaticket manualmente seguindo a documentação\e[0m"
+    echo -e "\e[97moficial do projeto.\e[0m"
+    echo ""
+    requisitar_outra_instalacao
 }
 
 ferramenta_izing() {
@@ -7106,11 +6692,14 @@ clear
 dados
 echo ""
 echo -e "\e[38;5;39m=========================================\e[0m"
-echo -e "\e[97m  IZING - Em desenvolvimento\e[0m"
+echo -e "\e[97m  IZING - REMOVIDO\e[0m"
 echo -e "\e[38;5;39m=========================================\e[0m"
 echo ""
-echo -e "\e[38;5;117mA instalação automatizada do Izing está sendo finalizada.\e[0m"
-echo -e "\e[38;5;117mRepositório oficial: https://github.com/ldurans/izing.open.io\e[0m"
+echo -e "\e[38;5;203mA instalação automatizada do Izing foi descontinuada\e[0m"
+echo -e "\e[38;5;203mpor instabilidade recorrente no deploy.\e[0m"
+echo ""
+echo -e "\e[38;5;117mAlternativa recomendada: Chatwoot (opção 02) ou\e[0m"
+echo -e "\e[38;5;117mEvolution API (opção 03) para WhatsApp.\e[0m"
 echo ""
 requisitar_outra_instalacao
 }
@@ -45552,20 +45141,7 @@ while true; do
             ;;
 
         23|whaticket|WHATICKET)
-
-            verificar_stack "whaticket${opcao2:+_$opcao2}" && continue || echo ""
-
-            if verificar_docker_e_portainer_traefik; then
-                ## INICIO TOKEN
-                STACK_NAME="whaticket${opcao2:+_$opcao2}"
-                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
-                    ferramenta_whaticket "$opcao2"
-                else
-                    APP_ORION="ferramenta_whaticket"
-                    verificar_arquivo
-                fi
-                ## FIM TOKEN
-            fi
+            ferramenta_whaticket "$opcao2"
             ;;
 
         ## Handlers *-reset e reset-all removidos — agora são opções [V]/[D] dentro do submenu de cada ferramenta (verificar_stack).
@@ -47572,18 +47148,8 @@ while true; do
             minio.bucket.setup
             ;;
 
-        criar-admin-whaticket|criar.admin.whaticket)
-            criar_admin_whaticket
-            ;;
-
-        verificar-whaticket|verificar.whaticket|whaticket.verificar)
-            ## Diagnóstico completo: descobre URLs a partir de /dados_vps/dados_whaticket
-            _vw_back="" ; _vw_front=""
-            if [ -f /root/dados_vps/dados_whaticket ]; then
-                _vw_back=$(grep -oE 'Backend \(API\): https://[^ ]+' /root/dados_vps/dados_whaticket | head -1 | sed 's|.*https://||')
-                _vw_front=$(grep -oE 'Frontend \(Painel\): https://[^ ]+' /root/dados_vps/dados_whaticket | head -1 | sed 's|.*https://||')
-            fi
-            _whaticket_verificar "$_vw_back" "$_vw_front"
+        criar-admin-whaticket|criar.admin.whaticket|verificar-whaticket|verificar.whaticket|whaticket.verificar|corrigir-whaticket|corrigir.whaticket|whaticket.corrigir)
+            echo -e "\e[31m✗ Comando indisponível: o Whaticket foi removido do instalador.\e[0m"
             ;;
           
         minio.bucket.delete)
