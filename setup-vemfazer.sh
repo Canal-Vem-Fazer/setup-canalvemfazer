@@ -2238,31 +2238,27 @@ menu_instalador() {
 }
 
 menu_instalador_pg_1(){
-    echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${amarelo}[ 25 ]${reset} - ${branco}Odoo ${verde}[2/2] ${reset}"
-    echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer ${verde}[1/1]${reset}              ${verde}| ${reset}"
-    echo -e "${amarelo}[ 02 ]${reset} - ${branco}Chatwoot ${verde}[2/2]${reset}                         ${verde}| ${reset}"
-    echo -e "${amarelo}[ 03 ]${reset} - ${branco}Evolution API ${verde}[1/1]${reset}                    ${verde}| ${reset}  ${amarelo}[ 26 ]${reset} - ${branco}Uno API ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 04 ]${reset} - ${branco}MinIO ${verde}[1/1]${reset}                            ${verde}| ${reset}  ${amarelo}[ 27 ]${reset} - ${branco}Quepasa API ${verde}[2/2] ${reset}"
-    echo -e "${amarelo}[ 05 ]${reset} - ${branco}Typebot ${verde}[2/2]${reset}                          ${verde}| ${reset}  ${amarelo}[ 28 ]${reset} - ${branco}Docuseal ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 06 ]${reset} - ${branco}N8N ${verde}[2/2]${reset}                              ${verde}| ${reset}  ${amarelo}[ 29 ]${reset} - ${branco}Grafana + Prometheus + cAdvisor ${verde}[2/2] ${reset}"
-    echo -e "${amarelo}[ 07 ]${reset} - ${branco}Flowise ${verde}[1/1]${reset}                          ${verde}| ${reset}  ${amarelo}[ 30 ]${reset} - ${branco}Dify AI ${verde}[2/4] ${reset}"
-    echo -e "${amarelo}[ 08 ]${reset} - ${branco}PgAdmin 4 ${verde}[1/1]${reset}                        ${verde}| ${reset}  ${amarelo}[ 31 ]${reset} - ${branco}Ollama ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 09 ]${reset} - ${branco}Nocobase ${verde}[1/1]${reset}                         ${verde}| ${reset}  ${amarelo}[ 32 ]${reset} - ${branco}Affine ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 10 ]${reset} - ${branco}Botpress ${verde}[1/1]${reset}                         ${verde}| ${reset}  ${amarelo}[ 33 ]${reset} - ${branco}Directus ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 11 ]${reset} - ${branco}Wordpress ${verde}[1/1]${reset}                        ${verde}| ${reset}  ${amarelo}[ 34 ]${reset} - ${branco}VaultWarden ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 12 ]${reset} - ${branco}Baserow ${verde}[2/4]${reset}                          ${verde}| ${reset}  ${amarelo}[ 35 ]${reset} - ${branco}NextCloud ${verde}[2/2] ${reset}"
-    echo -e "${amarelo}[ 13 ]${reset} - ${branco}MongoDB ${verde}[1/2]${reset}                          ${verde}| ${reset}  ${amarelo}[ 36 ]${reset} - ${branco}Strapi ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 14 ]${reset} - ${branco}RabbitMQ ${verde}[1/1]${reset}                         ${verde}| ${reset}  ${amarelo}[ 37 ]${reset} - ${branco}PhpMyAdmin ${verde}[1/2] ${reset}"
-    echo -e "${amarelo}[ 15 ]${reset} - ${branco}Uptime Kuma ${verde}[1/1]${reset}                      ${verde}| ${reset}  ${amarelo}[ 38 ]${reset} - ${branco}Supabase ${verde}[2/4] ${reset}"
-    echo -e "${amarelo}[ 16 ]${reset} - ${branco}Cal.com ${verde}[1/1]${reset}                          ${verde}| ${reset}  ${amarelo}[ 39 ]${reset} - ${branco}Ntfy ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 17 ]${reset} - ${branco}Mautic ${verde}[2/2]${reset}                           ${verde}| ${reset}  ${amarelo}[ 40 ]${reset} - ${branco}LowCoder ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 18 ]${reset} - ${branco}Appsmith ${verde}[2/4]${reset}                         ${verde}| ${reset}  ${amarelo}[ 41 ]${reset} - ${branco}LangFlow ${verde}[2/2] ${reset}"
-    echo -e "${amarelo}[ 19 ]${reset} - ${branco}Qdrant ${verde}[1/1]${reset}                           ${verde}| ${reset}  ${amarelo}[ 42 ]${reset} - ${branco}OpenProject ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 20 ]${reset} - ${branco}Woofed CRM ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 43 ]${reset} - ${branco}ZEP ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 21 ]${reset} - ${branco}Formbricks ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 44 ]${reset} - ${branco}HumHub ${verde}[1/1] ${reset}"
-    echo -e "${amarelo}[ 22 ]${reset} - ${branco}NocoDB ${verde}[1/1]${reset}                           ${verde}| ${reset}  ${amarelo}[ 45 ]${reset} - ${branco}Yourls ${verde}[1/1] ${reset}"
+    echo -e "${verde}>>> ${branco}COMUNICAÇÃO  &  INTELIGÊNCIA ARTIFICIAL${reset}"
     echo -e ""
-    echo -e "${verde}>>> ${amarelo}[ 138 ]${reset} - ${branco}Langfuse ${verde}[1/1]${reset}     ${amarelo}[ 139 ]${reset} - ${branco}Metabase ${verde}[1/1]${reset}                                ${verde}<<<${reset}"
+    echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${verde}--- AUTOMAÇÃO ---${reset}"
+    echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer                    ${verde}| ${reset}  ${amarelo}[ 10 ]${reset} - ${branco}N8N${reset}"
+    echo -e ""                                                                         
+    echo -e "${verde}--- CHAT & WHATSAPP ---${reset}                                    ${verde}| ${reset}  ${amarelo}[ 11 ]${reset} - ${branco}Typebot${reset}"
+    echo -e "${amarelo}[ 02 ]${reset} - ${branco}Chatwoot                               ${verde}| ${reset}  ${amarelo}[ 12 ]${reset} - ${branco}Mautic${reset}"
+    echo -e "${amarelo}[ 03 ]${reset} - ${branco}Evolution API                          ${verde}| ${reset}  ${amarelo}[ 13 ]${reset} - ${branco}ActivePieces${reset}"
+    echo -e "${amarelo}[ 04 ]${reset} - ${branco}Evolution GO                           ${verde}| ${reset}"
+    echo -e "${amarelo}[ 05 ]${reset} - ${branco}Uno API                                ${verde}| ${reset}  ${verde}--- INTELIGÊNCIA ARTIFICIAL ---${reset}"
+    echo -e "${amarelo}[ 06 ]${reset} - ${branco}Quepasa API                            ${verde}| ${reset}  ${amarelo}[ 14 ]${reset} - ${branco}Flowise${reset}"
+    echo -e "${amarelo}[ 07 ]${reset} - ${branco}WppConnect                             ${verde}| ${reset}  ${amarelo}[ 15 ]${reset} - ${branco}Dify AI${reset}"
+    echo -e "${amarelo}[ 08 ]${reset} - ${branco}Wuzapi                                 ${verde}| ${reset}  ${amarelo}[ 16 ]${reset} - ${branco}Ollama${reset}"
+    echo -e "${amarelo}[ 09 ]${reset} - ${branco}Transcreve Zap                         ${verde}| ${reset}  ${amarelo}[ 17 ]${reset} - ${branco}LangFlow${reset}"
+    echo -e "                                                                          ${verde}| ${reset}  ${amarelo}[ 18 ]${reset} - ${branco}Langfuse${reset}"
+    echo -e "                                                                          ${verde}| ${reset}  ${amarelo}[ 19 ]${reset} - ${branco}Anything LLM${reset}"
+    echo -e "                                                                          ${verde}| ${reset}  ${amarelo}[ 20 ]${reset} - ${branco}Qdrant${reset}"
+    echo -e "                                                                          ${verde}| ${reset}  ${amarelo}[ 21 ]${reset} - ${branco}ZEP${reset}"
+    echo -e "                                                                          ${verde}| ${reset}  ${amarelo}[ 22 ]${reset} - ${branco}Evo AI${reset}"
+    echo -e "                                                                          ${verde}| ${reset}  ${amarelo}[ 23 ]${reset} - ${branco}Bolt${reset}"
+    echo -e "                                                                          ${verde}| ${reset}  ${amarelo}[ 24 ]${reset} - ${branco}Botpress${reset}"
     echo -e ""
     echo -e "${verde}>>> ${amarelo}[ 999 ]${reset} ou ${amarelo}STATUS${reset} - ${branco}Status / Gerenciar instalações (reiniciar, logs, desinstalar)${reset}                 ${verde}<<<${reset}"
     echo -e "${verde}>>> ${amarelo}[ 998 ]${reset} ou ${amarelo}RESET${reset}  - ${branco}Reset TOTAL da VPS (apaga tudo para instalar do zero)${reset}                         ${verde}<<<${reset}"
@@ -2270,64 +2266,73 @@ menu_instalador_pg_1(){
     echo -e ""
     echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R2${branco} para ir para pagina 2 -->${reset}"
     echo -e ""
-
 }
 
 menu_instalador_pg_2(){
-    echo -e "${amarelo}[ 46 ]${reset} - ${branco}TwentyCRM${vermelho} ${verde}[1/4]${reset}                        ${verde}| ${reset}  ${amarelo}[ 69 ]${reset} - ${branco}Evo AI ${verde}[1/1]${reset}${reset}"
-    echo -e "${amarelo}[ 47 ]${reset} - ${branco}Mattermost ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 70 ]${reset} - ${branco}Keycloak ${verde}[2/2]${reset}${reset}"
-    echo -e "${amarelo}[ 48 ]${reset} - ${branco}Outline ${verde}[1/1]${reset}                          ${verde}| ${reset}  ${amarelo}[ 71 ]${reset} - ${branco}Passbolt ${verde}[1/1]${reset}${reset}"
-    echo -e "${amarelo}[ 49 ]${reset} - ${branco}Focalboard ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 72 ]${reset} - ${branco}Gotenberg ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 50 ]${reset} - ${branco}GLPI ${verde}[1/1]${reset}                             ${verde}| ${reset}  ${amarelo}[ 73 ]${reset} - ${branco}Wiki.js ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 51 ]${reset} - ${branco}Anything LLM ${verde}[1/1]${reset}                     ${verde}| ${reset}  ${amarelo}[ 74 ]${reset} - ${branco}AzuraCast ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 52 ]${reset} - ${branco}Excalidraw ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 75 ]${reset} - ${branco}Shlink ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 53 ]${reset} - ${branco}Easy!Apointments ${verde}[1/1]${reset}                 ${verde}| ${reset}  ${amarelo}[ 76 ]${reset} - ${branco}RustDesk ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 54 ]${reset} - ${branco}Documenso ${verde}[1/1]${reset}                        ${verde}| ${reset}  ${amarelo}[ 77 ]${reset} - ${branco}Hoppscotch ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 55 ]${reset} - ${branco}ToolJet ${verde}[2/4]${reset}                          ${verde}| ${reset}  ${amarelo}[ 78 ]${reset} - ${branco}Transcreve Zap ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 56 ]${reset} - ${branco}Stirling PDF ${verde}[1/1]${reset}                     ${verde}| ${reset}  ${amarelo}[ 79 ]${reset} - ${branco}OmniTools ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 57 ]${reset} - ${branco}ClickHouse ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 80 ]${reset} - ${branco}SerpBear ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 58 ]${reset} - ${branco}RedisInsight ${verde}[1/1]${reset}                     ${verde}| ${reset}  ${amarelo}[ 81 ]${reset} - ${branco}ActivePieces ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 59 ]${reset} - ${branco}Traccar ${verde}[1/1]${reset}                          ${verde}| ${reset}  ${amarelo}[ 82 ]${reset} - ${branco}Authentik ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 60 ]${reset} - ${branco}Firecrawl ${verde}[2/4]${reset}                        ${verde}| ${reset}  ${amarelo}[ 83 ]${reset} - ${branco}Checkmate ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 61 ]${reset} - ${branco}Wuzapi ${verde}[1/1]${reset}                           ${verde}| ${reset}  ${amarelo}[ 84 ]${reset} - ${branco}Heyform ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 62 ]${reset} - ${branco}krayin CRM ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 85 ]${reset} - ${branco}Wekan ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 63 ]${reset} - ${branco}Planka ${verde}[1/1]${reset}                           ${verde}| ${reset}  ${amarelo}[ 86 ]${reset} - ${branco}OpenSing ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 64 ]${reset} - ${branco}WppConnect ${verde}[1/1]${reset}                       ${verde}| ${reset}  ${amarelo}[ 87 ]${reset} - ${branco}Docmost ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 65 ]${reset} - ${branco}Browserless ${verde}[2/4]${reset}                      ${verde}| ${reset}  ${amarelo}[ 88 ]${reset} - ${branco}NetBox ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 66 ]${reset} - ${branco}Frappe ${verde}[2/4]${reset}                           ${verde}| ${reset}  ${amarelo}[ 89 ]${reset} - ${branco}Kafka ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 67 ]${reset} - ${branco}Bolt ${verde}[2/4]${reset}                             ${verde}| ${reset}  ${amarelo}[ 90 ]${reset} - ${branco}AstraCampaign ${verde}[1/1]${reset}"
-    echo -e "${amarelo}[ 68 ]${reset} - ${branco}WiseMapping ${verde}[1/1]${reset}                      ${verde}| ${reset}  ${amarelo}[ 91 ]${reset} - ${branco}Duplicati ${verde}[1/1]${reset}"
+    echo -e "${verde}>>> ${branco}CRM, BANCOS DE DADOS, CMS & INFRAESTRUTURA${reset}"
+    echo -e ""
+    echo -e "${verde}--- CRM & PROJETOS ---${reset}                                     ${verde}| ${reset}  ${verde}--- CMS & SITES ---${reset}"
+    echo -e "${amarelo}[ 25 ]${reset} - ${branco}Woofed CRM                             ${verde}| ${reset}  ${amarelo}[ 47 ]${reset} - ${branco}Wordpress${reset}"
+    echo -e "${amarelo}[ 26 ]${reset} - ${branco}TwentyCRM                              ${verde}| ${reset}  ${amarelo}[ 48 ]${reset} - ${branco}Directus${reset}"
+    echo -e "${amarelo}[ 27 ]${reset} - ${branco}krayin CRM                             ${verde}| ${reset}  ${amarelo}[ 49 ]${reset} - ${branco}Strapi${reset}"
+    echo -e "${amarelo}[ 28 ]${reset} - ${branco}EvoCRM                                 ${verde}| ${reset}  ${amarelo}[ 50 ]${reset} - ${branco}NextCloud${reset}"
+    echo -e "${amarelo}[ 29 ]${reset} - ${branco}OpenProject                            ${verde}| ${reset}  ${amarelo}[ 51 ]${reset} - ${branco}Wiki.js${reset}"
+    echo -e "${amarelo}[ 30 ]${reset} - ${branco}Planka                                 ${verde}| ${reset}  ${amarelo}[ 52 ]${reset} - ${branco}Docmost${reset}"
+    echo -e "${amarelo}[ 31 ]${reset} - ${branco}Focalboard                             ${verde}| ${reset}  ${amarelo}[ 53 ]${reset} - ${branco}HumHub${reset}"
+    echo -e "${amarelo}[ 32 ]${reset} - ${branco}Wekan                                  ${verde}| ${reset}  ${amarelo}[ 54 ]${reset} - ${branco}Outline${reset}"
+    echo -e "${amarelo}[ 33 ]${reset} - ${branco}GLPI                                   ${verde}| ${reset}  ${amarelo}[ 55 ]${reset} - ${branco}OpenSign${reset}"
+    echo -e "${amarelo}[ 34 ]${reset} - ${branco}Formbricks                             ${verde}| ${reset}"
+    echo -e "${amarelo}[ 35 ]${reset} - ${branco}Heyform                                ${verde}| ${reset}  ${verde}--- INFRAESTRUTURA ---${reset}"
+    echo -e "                                                                          ${verde}| ${reset}  ${amarelo}[ 56 ]${reset} - ${branco}MinIO${reset}"
+    echo -e "${verde}--- DATABASE & ADMIN ---${reset}                                   ${verde}| ${reset}  ${amarelo}[ 57 ]${reset} - ${branco}RabbitMQ${reset}"
+    echo -e "${amarelo}[ 36 ]${reset} - ${branco}PgAdmin 4                              ${verde}| ${reset}  ${amarelo}[ 58 ]${reset} - ${branco}Kafka${reset}"
+    echo -e "${amarelo}[ 37 ]${reset} - ${branco}PhpMyAdmin                             ${verde}| ${reset}  ${amarelo}[ 59 ]${reset} - ${branco}NetBox${reset}"
+    echo -e "${amarelo}[ 38 ]${reset} - ${branco}MongoDB                                ${verde}| ${reset}  ${amarelo}[ 60 ]${reset} - ${branco}Browserless${reset}"
+    echo -e "${amarelo}[ 39 ]${reset} - ${branco}Supabase                               ${verde}| ${reset}"
+    echo -e "${amarelo}[ 40 ]${reset} - ${branco}NocoDB                                 ${verde}| ${reset}"
+    echo -e "${amarelo}[ 41 ]${reset} - ${branco}Baserow                                ${verde}| ${reset}"
+    echo -e "${amarelo}[ 42 ]${reset} - ${branco}Nocobase                               ${verde}| ${reset}"
+    echo -e "${amarelo}[ 43 ]${reset} - ${branco}ClickHouse                             ${verde}| ${reset}"
+    echo -e "${amarelo}[ 44 ]${reset} - ${branco}RedisInsight                           ${verde}| ${reset}"
+    echo -e "${amarelo}[ 45 ]${reset} - ${branco}Metabase                               ${verde}| ${reset}"
+    echo -e "${amarelo}[ 46 ]${reset} - ${branco}PgBackWeb                              ${verde}| ${reset}"
     echo -e ""
     echo -e "${branco}<-- Digite ${amarelo}R1 ${branco}para ir para pagina 1             ${amarelo}|${branco}              Digite ${amarelo}R3${branco} para ir para pagina 3 -->${reset}"
     echo -e ""
 }
 
 menu_instalador_pg_3(){
-    echo -e "${amarelo}[ 92 ]${reset} - ${branco}PgBackWeb ${verde}[1/1]${reset}                        ${verde}| ${reset}  ${amarelo}[ 115 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 93 ]${reset} - ${branco}Jitsi Meet ${verde}[2/2]${reset}                       ${verde}| ${reset}  ${amarelo}[ 116 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 94 ]${reset} - ${branco}Code Server ${verde}[1/1]${reset}                      ${verde}| ${reset}  ${amarelo}[ 117 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 95 ]${reset} - ${branco}Papra ${verde}[1/1]${reset}                            ${verde}| ${reset}  ${amarelo}[ 118 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 96 ]${reset} - ${branco}ZeroByte ${verde}[1/1]${reset}                         ${verde}| ${reset}  ${amarelo}[ 119 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 97 ]${reset} - ${branco}Evolution GO ${verde}[1/1]${reset} ${verde}[NOVO]${reset}              ${verde}| ${reset}  ${amarelo}[ 120 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 98 ]${reset} - ${branco}EvoCRM ${verde}[4/8]${reset} ${verde}[NOVO]${reset}                    ${verde}| ${reset}  ${amarelo}[ 121 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 99 ]${reset} - ${branco}EM BREVE...${reset}                            ${verde}| ${reset}  ${amarelo}[ 122 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 100 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 123 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 101 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 124 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 102 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 125 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 103 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 126 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 104 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 127 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 105 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 128 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 106 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 129 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 107 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 130 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 108 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 131 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 109 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 132 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 110 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 133 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 111 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 134 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 112 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 135 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 113 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 136 ]${reset} - ${branco}EM BREVE...${reset}"
-    echo -e "${amarelo}[ 114 ]${reset} - ${branco}EM BREVE...${reset}                           ${verde}| ${reset}  ${amarelo}[ 137 ]${reset} - ${branco}EM BREVE...${reset}"
+    echo -e "${verde}>>> ${branco}MONITORAMENTO, PRODUTIVIDADE, SEGURANÇA & OUTROS${reset}"
     echo -e ""
-    echo -e "${branco}<-- Digite ${amarelo}R2 ${branco}para ir para pagina 2             ${amarelo}|${branco}              Digite ${amarelo}R3${branco} para ir para pagina 3 -->${reset}"
+    echo -e "${verde}--- MONITORAMENTO ---${reset}                                      ${verde}| ${reset}  ${verde}--- SEGURANÇA ---${reset}"
+    echo -e "${amarelo}[ 61 ]${reset} - ${branco}Uptime Kuma                            ${verde}| ${reset}  ${amarelo}[ 85 ]${reset} - ${branco}Keycloak${reset}"
+    echo -e "${amarelo}[ 62 ]${reset} - ${branco}Grafana + Prometheus + cAdvisor        ${verde}| ${reset}  ${amarelo}[ 86 ]${reset} - ${branco}Authentik${reset}"
+    echo -e "${amarelo}[ 63 ]${reset} - ${branco}Checkmate                              ${verde}| ${reset}  ${amarelo}[ 87 ]${reset} - ${branco}VaultWarden${reset}"
+    echo -e "${amarelo}[ 64 ]${reset} - ${branco}Traccar                                ${verde}| ${reset}  ${amarelo}[ 88 ]${reset} - ${branco}Passbolt${reset}"
+    echo -e "${amarelo}[ 65 ]${reset} - ${branco}SerpBear                               ${verde}| ${reset}  ${amarelo}[ 89 ]${reset} - ${branco}ZeroByte${reset}"
+    echo -e "${amarelo}[ 66 ]${reset} - ${branco}Duplicati                              ${verde}| ${reset}"
+    echo -e "                                                                          ${verde}| ${reset}  ${verde}--- INFRA & SERVIÇOS ---${reset}"
+    echo -e "${verde}--- PRODUTIVIDADE ---${reset}                                      ${verde}| ${reset}  ${amarelo}[ 90 ]${reset} - ${branco}Ntfy${reset}"
+    echo -e "${amarelo}[ 67 ]${reset} - ${branco}Cal.com                                ${verde}| ${reset}  ${amarelo}[ 91 ]${reset} - ${branco}Gotenberg${reset}"
+    echo -e "${amarelo}[ 68 ]${reset} - ${branco}Easy!Apointments                       ${verde}| ${reset}  ${amarelo}[ 92 ]${reset} - ${branco}Firecrawl${reset}"
+    echo -e "${amarelo}[ 69 ]${reset} - ${branco}Appsmith                               ${verde}| ${reset}  ${amarelo}[ 93 ]${reset} - ${branco}AstraCampaign${reset}"
+    echo -e "${amarelo}[ 70 ]${reset} - ${branco}LowCoder                               ${verde}| ${reset}"
+    echo -e "${amarelo}[ 71 ]${reset} - ${branco}ToolJet                                ${verde}| ${reset}  ${verde}--- OUTROS ---${reset}"
+    echo -e "${amarelo}[ 72 ]${reset} - ${branco}Excalidraw                             ${verde}| ${reset}  ${amarelo}[ 94 ]${reset} - ${branco}Yourls${reset}"
+    echo -e "${amarelo}[ 73 ]${reset} - ${branco}WiseMapping                            ${verde}| ${reset}  ${amarelo}[ 95 ]${reset} - ${branco}Shlink${reset}"
+    echo -e "${amarelo}[ 74 ]${reset} - ${branco}Affine                                 ${verde}| ${reset}  ${amarelo}[ 96 ]${reset} - ${branco}RustDesk${reset}"
+    echo -e "${amarelo}[ 75 ]${reset} - ${branco}Mattermost                             ${verde}| ${reset}  ${amarelo}[ 97 ]${reset} - ${branco}Hoppscotch${reset}"
+    echo -e "${amarelo}[ 76 ]${reset} - ${branco}Jitsi Meet                             ${verde}| ${reset}  ${amarelo}[ 98 ]${reset} - ${branco}AzuraCast${reset}"
+    echo -e "${amarelo}[ 77 ]${reset} - ${branco}Odoo                                   ${verde}| ${reset}"
+    echo -e "${amarelo}[ 78 ]${reset} - ${branco}Frappe                                 ${verde}| ${reset}"
+    echo -e "${amarelo}[ 79 ]${reset} - ${branco}Docuseal                               ${verde}| ${reset}"
+    echo -e "${amarelo}[ 80 ]${reset} - ${branco}Documenso                              ${verde}| ${reset}"
+    echo -e "${amarelo}[ 81 ]${reset} - ${branco}Stirling PDF                           ${verde}| ${reset}"
+    echo -e "${amarelo}[ 82 ]${reset} - ${branco}Papra                                  ${verde}| ${reset}"
+    echo -e "${amarelo}[ 83 ]${reset} - ${branco}OmniTools                              ${verde}| ${reset}"
+    echo -e "${amarelo}[ 84 ]${reset} - ${branco}Code Server                            ${verde}| ${reset}"
+    echo -e ""
+    echo -e "${branco}<-- Digite ${amarelo}R2 ${branco}para ir para pagina 2             ${amarelo}|${branco}              Digite ${amarelo}R1${branco} para ir para pagina 1 -->${reset}"
     echo -e ""
 }
 
@@ -45140,13 +45145,9 @@ while true; do
             ferramenta_traefik_e_portainer
             ;;
 
-        23|whaticket|WHATICKET)
-            ferramenta_whaticket "$opcao2"
-            ;;
 
         ## Handlers *-reset e reset-all removidos — agora são opções [V]/[D] dentro do submenu de cada ferramenta (verificar_stack).
         2|02|chatwoot|CHATWOOT)
-
             verificar_stack "chatwoot${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45163,7 +45164,6 @@ while true; do
             ;;
 
         3|03|evolution|evo|EVO)
-
             verificar_stack "evolution${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45178,8 +45178,7 @@ while true; do
                 ## FIM TOKEN 
             fi
             ;;
-        4|04|minio|MINIO)
-
+        56|minio|MINIO)
             verificar_stack "minio${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45194,8 +45193,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        5|05|typebot|TYPEBOT)
-
+        11|typebot|TYPEBOT)
             verificar_stack "typebot${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_minio; then
@@ -45210,8 +45208,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        6|06|n8n|N8N)
-
+        10|n8n|N8N)
             verificar_stack "n8n${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45226,8 +45223,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        7|07|flowise|FLOWISE)
-
+        14|flowise|FLOWISE)
             verificar_stack "flowise${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45242,8 +45238,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        8|08|pgadmin|PGADMIN)
-
+        36|pgadmin|PGADMIN)
             verificar_stack "pgadmin${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45258,8 +45253,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        9|09|nocobase|NOCOBASE)
-
+        42|nocobase|NOCOBASE)
             verificar_stack "nocobase${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45274,8 +45268,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        10|botpress|BOTPRESS)
-
+        24|botpress|BOTPRESS)
             verificar_stack "botpress${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45290,7 +45283,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        11|wordpress|WORDPRESS)
+        47|wordpress|WORDPRESS)
             if verificar_docker_e_portainer_traefik; then
                 ## INICIO TOKEN
                 if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
@@ -45302,8 +45295,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        12|baserow|BASEROW)
-
+        41|baserow|BASEROW)
             verificar_stack "baserow${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45318,8 +45310,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        13|mongodb|MONGODB)
-
+        38|mongodb|MONGODB)
             verificar_stack "mongodb${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45334,8 +45325,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        14|rabbitmq|RABBITMQ)
-
+        57|rabbitmq|RABBITMQ)
             verificar_stack "rabbitmq${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45350,8 +45340,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        15|uptimekuma|UPTIMEKUMA)
-
+        61|uptimekuma|UPTIMEKUMA)
             verificar_stack "uptimekuma${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45366,8 +45355,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        16|calcom|CALCOM)
-
+        67|calcom|CALCOM)
             verificar_stack "calcom${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45382,8 +45370,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        17|mautic|MAUTIC)
-
+        12|mautic|MAUTIC)
             verificar_stack "mautic${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45398,8 +45385,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        18|appsmith|APPSMITH)
-
+        69|appsmith|APPSMITH)
             verificar_stack "appsmith${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45415,8 +45401,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        19|qdrant|QDRANT)
-
+        20|qdrant|QDRANT)
             verificar_stack "qdrant${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45431,8 +45416,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        20|woofedcrm|WOOFEDCRM)
-
+        25|woofedcrm|WOOFEDCRM)
             verificar_stack "woofedcrm${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45447,8 +45431,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        21|formbricks|FORMBRICKS)
-
+        34|formbricks|FORMBRICKS)
             verificar_stack "formbricks${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_minio; then
@@ -45463,8 +45446,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        22|nocodb|NOCODB)
-
+        40|nocodb|NOCODB)
             verificar_stack "nocodb${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45479,8 +45461,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        138|langfuse|LANGFUSE)
-
+        18|langfuse|LANGFUSE)
             verificar_stack "langfuse${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_minio && verificar_antes_se_tem_clickhouse; then
@@ -45495,8 +45476,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        139|metabase|METABASE)
-
+        45|metabase|METABASE)
             verificar_stack "metabase${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45511,24 +45491,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        24|izing|IZING)
-
-            verificar_stack "izing${opcao2:+_$opcao2}" && continue || echo ""
-
-            if verificar_docker_e_portainer_traefik; then
-                ## INICIO TOKEN
-                STACK_NAME="izing${opcao2:+_$opcao2}"
-                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
-                    ferramenta_izing "$opcao2"
-                else
-                    APP_ORION="ferramenta_izing"
-                    verificar_arquivo
-                fi
-                ## FIM TOKEN
-            fi
-            ;;
-        25|odoo|ODOO)
-
+        77|odoo|ODOO)
             verificar_stack "odoo${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45544,8 +45507,7 @@ while true; do
             fi
             ;;
 
-        26|unoapi|UNOAPI)
-
+        5|05|unoapi|UNOAPI)
             verificar_stack "unoapi${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_rabbitmq; then
@@ -45561,8 +45523,7 @@ while true; do
             fi
             ;;
 
-        27|quepasa|QUEPASA)
-
+        6|06|quepasa|QUEPASA)
             verificar_stack "quepasa${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45577,8 +45538,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        28|docuseal|DOCUSEAL)
-
+        79|docuseal|DOCUSEAL)
             verificar_stack "docuseal${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45593,8 +45553,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        29|monitor|grafana|MONITOR|GRAFANA)
-
+        62|monitor|grafana|MONITOR|GRAFANA)
             verificar_stack "monitor${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45609,8 +45568,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        30|dify|DIFY)
-
+        15|dify|DIFY)
             verificar_stack "dify${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_minio; then
@@ -45625,8 +45583,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        31|ollama|OLLAMA)
-
+        16|ollama|OLLAMA)
             verificar_stack "ollama${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45641,8 +45598,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        32|affine|AFFINE)
-
+        74|affine|AFFINE)
             verificar_stack "affine${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45657,8 +45613,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        33|directus|DIRECTUS)
-
+        48|directus|DIRECTUS)
             verificar_stack "directus${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_minio; then
@@ -45673,8 +45628,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        34|vaultwarden|VAULTWARDEN)
-
+        87|vaultwarden|VAULTWARDEN)
             verificar_stack "vaultwarden${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45689,8 +45643,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        35|nextcloud|NEXTCLOUD)
-
+        50|nextcloud|NEXTCLOUD)
             verificar_stack "nextcloud${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45705,8 +45658,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        36|strapi|STRAPI)
-
+        49|strapi|STRAPI)
             verificar_stack "strapi${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45722,7 +45674,6 @@ while true; do
             fi
             ;;
         37|phpmyadmin|pma|PHPMYADMIN|PMA)
-
             verificar_stack "phpmyadmin${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45737,8 +45688,7 @@ while true; do
                 ## FIM TOKEN
             fi
             ;;
-        38|supabase|supa|SUPABASE|SUPA)
-
+        39|supabase|supa|SUPABASE|SUPA)
             verificar_stack "supabase${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45753,8 +45703,7 @@ while true; do
                 ## FIM TOKEN            
             fi
             ;;
-        39|ntfy|NTFY)
-
+        90|ntfy|NTFY)
             verificar_stack "ntfy${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45769,8 +45718,7 @@ while true; do
                 ## FIM TOKEN
             fi   
             ;;
-        40|lowcoder|LOWCODER)
-
+        70|lowcoder|LOWCODER)
             verificar_stack "lowcoder${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_mongo; then
@@ -45785,8 +45733,7 @@ while true; do
                 ## FIM TOKEN
             fi   
             ;;
-        41|langflow|LANGFLOW)
-
+        17|langflow|LANGFLOW)
             verificar_stack "langflow${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45801,8 +45748,7 @@ while true; do
                 ## FIM TOKEN
             fi   
             ;;
-        42|openproject|OPENPROJECT)
-
+        29|openproject|OPENPROJECT)
             verificar_stack "openproject${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45817,8 +45763,7 @@ while true; do
                 ## FIM TOKEN
             fi   
             ;;
-        43|zep|ZEP)
-
+        21|zep|ZEP)
             verificar_stack "zep${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45833,8 +45778,7 @@ while true; do
                 ## FIM TOKEN
             fi   
             ;;
-        44|humhub|HUMHUB)
-
+        53|humhub|HUMHUB)
             verificar_stack "humhub${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45849,8 +45793,7 @@ while true; do
                 ## FIM TOKEN
             fi   
             ;;
-        45|yourls|YOURLS)
-
+        94|yourls|YOURLS)
             verificar_stack "yourls${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45866,8 +45809,7 @@ while true; do
             fi   
             ;;
 
-        46|twentycrm|TWENTYCRM)
-
+        26|twentycrm|TWENTYCRM)
             verificar_stack "twentycrm${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45883,8 +45825,7 @@ while true; do
             fi   
             ;;
 
-        47|mattermost|MATTERMOST) 
-
+        75|mattermost|MATTERMOST)
             verificar_stack "mattermost${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45900,8 +45841,7 @@ while true; do
             fi   
             ;;
 
-        48|outline|OUTLINE)
-
+        54|outline|OUTLINE)
             verificar_stack "outline${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45917,8 +45857,7 @@ while true; do
             fi   
             ;;
 
-        49|focalboard|FOCALBOARD) 
-
+        31|focalboard|FOCALBOARD)
             verificar_stack "focalboard${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45934,8 +45873,7 @@ while true; do
             fi   
             ;;
 
-        50|glpi|GLPI) 
-
+        33|glpi|GLPI)
             verificar_stack "glpi${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45951,8 +45889,7 @@ while true; do
             fi   
             ;;
 
-        51|anythingllm|anything|AnythingLLM|Anything) 
-
+        19|anythingllm|anything|AnythingLLM|Anything)
             verificar_stack "anythingllm${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45968,8 +45905,7 @@ while true; do
             fi   
             ;;
         
-        52|excalidraw|Excalidraw) 
-
+        72|excalidraw|Excalidraw)
             verificar_stack "excalidraw${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -45985,8 +45921,7 @@ while true; do
             fi   
             ;;
 
-        53|easyappointments|EasyAppointments|Easy!Appointments|easy!appointments) 
-
+        68|easyappointments|EasyAppointments|Easy!Appointments|easy!appointments)
             verificar_stack "easyappointments${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46002,8 +45937,7 @@ while true; do
             fi   
             ;;
 
-        54|documenso|Documenso) 
-
+        80|documenso|Documenso)
             verificar_stack "documenso${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_minio; then
@@ -46036,8 +45970,7 @@ while true; do
         #    fi   
         #    ;;
 
-        55|tooljet|TOOLJET)
-
+        71|tooljet|TOOLJET)
             verificar_stack "tooljet${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46053,8 +45986,7 @@ while true; do
             fi   
             ;;
 
-        56|StirlingPDF|Stirling|stirling) 
-
+        81|StirlingPDF|Stirling|stirling)
             verificar_stack "stirlingpdf${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46070,8 +46002,7 @@ while true; do
             fi   
             ;;
         
-        57|ClickHouse|clickhouse|CLICKHOUSE)
-
+        43|ClickHouse|clickhouse|CLICKHOUSE)
             verificar_stack "clickhouse${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46087,8 +46018,7 @@ while true; do
             fi   
             ;;
         
-        58|RedisInsight|redisinsight|REDISINSIGHT) 
-
+        44|RedisInsight|redisinsight|REDISINSIGHT)
             verificar_stack "redisinsight${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46104,8 +46034,7 @@ while true; do
             fi   
             ;;
 
-        59|Traccar|traccar|TRACCAR) 
-
+        64|Traccar|traccar|TRACCAR)
             verificar_stack "traccar${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46121,8 +46050,7 @@ while true; do
             fi   
             ;;
 
-        60|Firecrawl|firecrawl|FIRECRAWL) 
-
+        92|Firecrawl|firecrawl|FIRECRAWL)
             verificar_stack "firecrawl${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46138,8 +46066,7 @@ while true; do
             fi   
             ;;
 
-        61|Wuzapi|wuzapi|WUZAPI) 
-
+        8|08|Wuzapi|wuzapi|WUZAPI)
             verificar_stack "wuzapi${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46155,8 +46082,7 @@ while true; do
             fi   
             ;;
 
-        62|KrayinCRM|krayincrm|KRAYINCRM) 
-
+        27|KrayinCRM|krayincrm|KRAYINCRM)
             verificar_stack "krayincrm${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46172,8 +46098,7 @@ while true; do
             fi   
             ;;
 
-        63|Planka|planka|PLANKA) 
-
+        30|Planka|planka|PLANKA)
             verificar_stack "planka${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46189,8 +46114,7 @@ while true; do
             fi   
             ;;
 
-        64|WppConnect|wppconnect|WPPCONNECT) 
-
+        7|07|WppConnect|wppconnect|WPPCONNECT)
             verificar_stack "wppconnect${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46206,8 +46130,7 @@ while true; do
             fi   
             ;;
 
-        65|Browserless|browserless|BROWSERLESS) 
-
+        60|Browserless|browserless|BROWSERLESS)
             verificar_stack "browserless${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46223,8 +46146,7 @@ while true; do
             fi   
             ;;
 
-        66|Frappe|frappe|FRAPPE) 
-
+        78|Frappe|frappe|FRAPPE)
             verificar_stack "erpnext${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46240,8 +46162,7 @@ while true; do
             fi   
             ;;
 
-        67|Bolt|bolt|BOLT) 
-
+        23|Bolt|bolt|BOLT)
             verificar_stack "bolt${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46257,8 +46178,7 @@ while true; do
             fi   
             ;;
 
-        68|WiseMapping|wisemapping|WISEMAPPING) 
-
+        73|WiseMapping|wisemapping|WISEMAPPING)
             verificar_stack "wisemapping${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46274,8 +46194,7 @@ while true; do
             fi   
             ;;
         
-        69|EvoAPI|evoapi|EVOAPI) 
-
+        22|EvoAPI|evoapi|EVOAPI)
             verificar_stack "evoai${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46291,8 +46210,7 @@ while true; do
             fi   
             ;;
         
-        70|Keycloak|keycloak|KEYCLOAK) 
-
+        85|Keycloak|keycloak|KEYCLOAK)
             verificar_stack "keycloak${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46308,8 +46226,7 @@ while true; do
             fi   
             ;;
 
-        71|Passbolt|passbolt|PASSBOLT) 
-
+        88|Passbolt|passbolt|PASSBOLT)
             verificar_stack "passbolt${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46325,8 +46242,7 @@ while true; do
             fi   
             ;;
           
-        72|Gotenberg|gotenberg|GOTENBERG) 
-
+        91|Gotenberg|gotenberg|GOTENBERG)
             verificar_stack "gotenberg${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46342,8 +46258,7 @@ while true; do
             fi   
             ;;
         
-        73|Wiki|wiki|WIKI) 
-
+        51|Wiki|wiki|WIKI)
             verificar_stack "wiki${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46359,8 +46274,7 @@ while true; do
             fi   
             ;;
         
-        74|AzuraCast|azuracast|AZURACAST) 
-
+        98|AzuraCast|azuracast|AZURACAST)
             verificar_stack "azuracast${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46376,8 +46290,7 @@ while true; do
             fi   
             ;;
         
-        75|Shlink|shlink|SHLINK) 
-
+        95|Shlink|shlink|SHLINK)
             verificar_stack "shlink${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46393,8 +46306,7 @@ while true; do
             fi   
             ;;
         
-        76|RustDesk|rustdesk|RUSTDESK) 
-
+        96|RustDesk|rustdesk|RUSTDESK)
             verificar_stack "rustdesk${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46410,8 +46322,7 @@ while true; do
             fi   
             ;;
         
-        77|Hoppscotch|hoppscotch|HOPPSCOTCH) 
-
+        97|Hoppscotch|hoppscotch|HOPPSCOTCH)
             verificar_stack "hoppscotch${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46427,8 +46338,7 @@ while true; do
             fi   
             ;;
         
-        78|transcreve|transcrevezap|TRANSCREVE|TRANSCREVEZAP) 
-
+        9|09|transcreve|transcrevezap|TRANSCREVE|TRANSCREVEZAP)
             verificar_stack "transcrevezap${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46444,8 +46354,7 @@ while true; do
             fi   
             ;;
         
-        79|omnitools|OMNITOOLS) 
-
+        83|omnitools|OMNITOOLS)
             verificar_stack "omnitools${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46461,8 +46370,7 @@ while true; do
             fi   
             ;;
         
-        80|serpbear|SERPBEAR) 
-
+        65|serpbear|SERPBEAR)
             verificar_stack "serpbear${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46478,8 +46386,7 @@ while true; do
             fi   
             ;;
         
-        81|ActivePieces|activepieces|ACTIVEPIECES)
-
+        13|ActivePieces|activepieces|ACTIVEPIECES)
             verificar_stack "activepieces${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46495,8 +46402,7 @@ while true; do
             fi   
             ;;
         
-        82|authentik|AUTHENTIK)
-
+        86|authentik|AUTHENTIK)
             verificar_stack "authentik${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46512,8 +46418,7 @@ while true; do
             fi   
             ;;
         
-        83|checkmate|CHECKMATE)
-
+        63|checkmate|CHECKMATE)
             verificar_stack "checkmate${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_mongo; then
@@ -46529,8 +46434,7 @@ while true; do
             fi
             ;;
         
-        84|heyform|HEYFORM)
-
+        35|heyform|HEYFORM)
             verificar_stack "heyform${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_mongo; then
@@ -46546,8 +46450,7 @@ while true; do
             fi
             ;;
         
-        85|wekan|WEKAN)
-
+        32|wekan|WEKAN)
             verificar_stack "wekan${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_mongo; then
@@ -46563,8 +46466,7 @@ while true; do
             fi
             ;;
         
-        86|opensign|OPENSIGN)
-
+        55|opensign|OPENSIGN)
             verificar_stack "opensign${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik && verificar_antes_se_tem_mongo; then
@@ -46580,8 +46482,7 @@ while true; do
             fi
             ;;
         
-        87|docmost|DOCMOST)
-
+        52|docmost|DOCMOST)
             verificar_stack "docmost${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46597,8 +46498,7 @@ while true; do
             fi   
             ;;
 
-        88|netbox|NETBOX)
-
+        59|netbox|NETBOX)
             verificar_stack "netbox${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46614,8 +46514,7 @@ while true; do
             fi   
             ;;
 
-        89|kafka|KAFKA)
-
+        58|kafka|KAFKA)
             verificar_stack "kafka${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46631,8 +46530,7 @@ while true; do
             fi   
             ;;
         
-        90|astracampaign|ASTRACAMPAIGN)
-
+        93|astracampaign|ASTRACAMPAIGN)
             verificar_stack "astracampaign${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46648,8 +46546,7 @@ while true; do
             fi   
             ;;
 
-        91|duplicati|DUPLICATI)
-
+        66|duplicati|DUPLICATI)
             verificar_stack "duplicati${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46665,8 +46562,7 @@ while true; do
             fi   
             ;;
 
-        92|pgbackweb|PGBACKWEB)
-
+        46|pgbackweb|PGBACKWEB)
             verificar_stack "pgbackweb${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46682,8 +46578,7 @@ while true; do
             fi   
             ;;
         
-        93|jitsimeet|jitsi|JITSIMET|JITSI)
-
+        76|jitsimeet|jitsi|JITSIMET|JITSI)
             verificar_stack "jitsi${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46699,8 +46594,7 @@ while true; do
             fi   
             ;;
         
-        94|code_server|CODE_SERVER|codeserver|CODESERVER)
-
+        84|code_server|CODE_SERVER|codeserver|CODESERVER)
             verificar_stack "code_server${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46716,8 +46610,7 @@ while true; do
             fi   
             ;;
         
-        95|papra|PAPRA)
-
+        82|papra|PAPRA)
             verificar_stack "papra${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46733,8 +46626,7 @@ while true; do
             fi   
             ;;
 
-        96|zerobyte|ZEROBYTE)
-
+        89|zerobyte|ZEROBYTE)
             verificar_stack "zerobyte${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46750,8 +46642,7 @@ while true; do
             fi   
             ;;
         
-        97|evolutiongo|EVOLUTIONGO|EVOLUTION_GO|EVOLUTION-GO|evolution-go|evolution_go|evogo|EVOGO)
-
+        4|04|evolutiongo|EVOLUTIONGO|EVOLUTION_GO|EVOLUTION-GO|evolution-go|evolution_go|evogo|EVOGO)
             verificar_stack "evolution_go${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46767,8 +46658,7 @@ while true; do
             fi   
             ;;
         
-        98|evocrm|EVOCRM)
-
+        28|evocrm|EVOCRM)
             verificar_stack "evocrm${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
@@ -46976,8 +46866,7 @@ while true; do
             fi   
             ;;
         
-        transcrevezap)
-
+        9|09|transcrevezap)
             verificar_stack "transcrevezap${opcao2:+_$opcao2}" && continue || echo ""
 
             if verificar_docker_e_portainer_traefik; then
