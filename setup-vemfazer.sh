@@ -2239,6 +2239,7 @@ menu_instalador() {
 
 menu_instalador_pg_1(){
     echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${amarelo}[ 23 ]${reset} - ${branco}Whaticket Community ${verde}[NOVO] ${reset}"
+    echo -e "${amarelo}[ 23r ]${reset} - ${branco}Reinstalar (limpa volumes): ${amarelo}whaticket-reset${reset} ${amarelo}chatwoot-reset${reset} ${amarelo}evolution-reset${reset} ${amarelo}n8n-reset${reset} ${amarelo}reset-all${reset}"
     echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer ${verde}[1/1]${reset}              ${verde}| ${reset}  ${amarelo}[ 24 ]${reset} - ${branco}Izing ${verde}[NOVO] ${reset}"
     echo -e "${amarelo}[ 02 ]${reset} - ${branco}Chatwoot ${verde}[2/2]${reset}                         ${verde}| ${reset}  ${amarelo}[ 25 ]${reset} - ${branco}Odoo ${verde}[2/2] ${reset}"
     echo -e "${amarelo}[ 03 ]${reset} - ${branco}Evolution API ${verde}[1/1]${reset}                    ${verde}| ${reset}  ${amarelo}[ 26 ]${reset} - ${branco}Uno API ${verde}[1/1] ${reset}"
@@ -6187,6 +6188,289 @@ requisitar_outra_instalacao
 ## ╚███╔███╔╝██║  ██║██║  ██║   ██║   ██║╚██████╗██║  ██╗███████╗   ██║
 ##  ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝   ╚═╝
 
+## Helper genérico: remove uma stack do Swarm e seus volumes nomeados.
+## Uso: _reset_stack_volumes "<titulo>" "<stack_name>" "<vol1> <vol2> ..."
+_reset_stack_volumes() {
+    local titulo="$1"
+    local stack_name="$2"
+    shift 2
+    local volumes="$*"
+
+    clear
+    echo ""
+    echo -e "\e[33m═══════════════════════════════════════════════════════════════\e[0m"
+    echo -e "\e[33m  REINSTALAR $titulo — limpa stack e volumes antes de instalar\e[0m"
+    echo -e "\e[33m═══════════════════════════════════════════════════════════════\e[0m"
+    echo ""
+    echo -e "\e[97mEsta opção irá:\e[0m"
+    echo -e "\e[97m  1. Remover a stack '$stack_name' (se existir)\e[0m"
+    local i=2
+    for v in $volumes; do
+        echo -e "\e[97m  $i. Remover o volume '$v'\e[0m"
+        i=$((i+1))
+    done
+    echo -e "\e[97m  $i. Iniciar uma instalação limpa de $titulo\e[0m"
+    echo ""
+    echo -e "\e[31m⚠  ATENÇÃO: Todos os dados desta aplicação serão PERDIDOS.\e[0m"
+    echo ""
+    read -p "Confirma a reinstalação completa? Digite 'REINSTALAR' para confirmar: " confirma_reset
+
+    if [ "$confirma_reset" != "REINSTALAR" ]; then
+        echo ""
+        echo -e "\e[33mOperação cancelada.\e[0m"
+        sleep 2
+        return 1
+    fi
+
+    echo ""
+    echo -e "\e[33m• Removendo stack '$stack_name'...\e[0m"
+    docker stack rm "$stack_name" >/dev/null 2>&1
+
+    echo -e "\e[33m• Aguardando Swarm liberar serviços...\e[0m"
+    for n in $(seq 1 60); do
+        local running
+        running=$(docker service ls --filter "name=${stack_name}_" -q 2>/dev/null | wc -l)
+        [ "$running" -eq 0 ] && break
+        sleep 2
+    done
+    sleep 5
+
+    docker ps -a --filter "name=${stack_name}" -q | xargs -r docker rm -f >/dev/null 2>&1
+
+    echo -e "\e[33m• Removendo volumes...\e[0m"
+    for v in $volumes; do
+        if docker volume inspect "$v" >/dev/null 2>&1; then
+            if docker volume rm "$v" >/dev/null 2>&1; then
+                echo -e "\e[32m   ✓ $v removido\e[0m"
+            else
+                sleep 5
+                if docker volume rm "$v" >/dev/null 2>&1; then
+                    echo -e "\e[32m   ✓ $v removido (2ª tentativa)\e[0m"
+                else
+                    echo -e "\e[31m   ✗ Falha ao remover $v. Rode manualmente: docker volume rm $v\e[0m"
+                    return 1
+                fi
+            fi
+        else
+            echo -e "\e[90m   - $v não existe (ok)\e[0m"
+        fi
+    done
+
+    echo ""
+    echo -e "\e[32m✓ Limpeza concluída. Iniciando instalação limpa de $titulo...\e[0m"
+    sleep 3
+    return 0
+}
+
+ferramenta_chatwoot_reinstalar() {
+    local sufixo="$1"
+    local stack="chatwoot${sufixo:+_$sufixo}"
+    local vols="${stack}_storage ${stack}_public ${stack}_mailer ${stack}_mailers ${stack}_redis"
+    if _reset_stack_volumes "CHATWOOT" "$stack" "$vols"; then
+        ferramenta_chatwoot "$sufixo"
+    fi
+}
+
+ferramenta_evolution_reinstalar() {
+    local sufixo="$1"
+    local stack="evolution${sufixo:+_$sufixo}"
+    local vols="${stack}_instances ${stack}_redis"
+    if _reset_stack_volumes "EVOLUTION API" "$stack" "$vols"; then
+        ferramenta_evolution "$sufixo"
+    fi
+}
+
+ferramenta_n8n_reinstalar() {
+    local sufixo="$1"
+    local stack="n8n${sufixo:+_$sufixo}"
+    local vols="${stack}_redis"
+    echo ""
+    echo -e "\e[33mObs: N8N usa Postgres compartilhado. Esta opção limpa apenas a stack e o volume Redis.\e[0m"
+    echo -e "\e[33mPara apagar dados do banco, faça DROP do schema/banco do n8n no Postgres manualmente.\e[0m"
+    sleep 3
+    if _reset_stack_volumes "N8N" "$stack" "$vols"; then
+        ferramenta_n8n "$sufixo"
+    fi
+}
+
+ferramenta_reset_all() {
+    clear
+    echo ""
+    echo -e "\e[33m═══════════════════════════════════════════════════════════════\e[0m"
+    echo -e "\e[33m  RESET-ALL — Limpeza em lote de stacks e volumes\e[0m"
+    echo -e "\e[33m═══════════════════════════════════════════════════════════════\e[0m"
+    echo ""
+    echo -e "\e[97mEscolha as ferramentas que deseja resetar (stack + volumes serão removidos):\e[0m"
+    echo ""
+
+    ## Catálogo: id|titulo|stack_base|volumes_relativos (separados por espaço, prefixados pela stack)
+    local -a CAT_ID=(   "1"           "2"          "3"               "4")
+    local -a CAT_NAME=( "Whaticket"   "Chatwoot"   "Evolution API"   "N8N")
+    local -a CAT_STACK=("whaticket"   "chatwoot"   "evolution"       "n8n")
+    local -a CAT_VOLS=( "_mysql _redis"
+                        "_storage _public _mailer _mailers _redis"
+                        "_instances _redis"
+                        "_redis")
+
+    local sufixo="$1"
+    local i
+    for i in "${!CAT_ID[@]}"; do
+        local stack="${CAT_STACK[$i]}${sufixo:+_$sufixo}"
+        local existe="\e[90m(não instalado)\e[0m"
+        if docker stack ls --format '{{.Name}}' 2>/dev/null | grep -qx "$stack"; then
+            existe="\e[32m(stack ativa)\e[0m"
+        else
+            ## verifica se há volumes residuais
+            local v
+            for v in ${CAT_VOLS[$i]}; do
+                if docker volume inspect "${stack}${v}" >/dev/null 2>&1; then
+                    existe="\e[33m(volumes residuais)\e[0m"
+                    break
+                fi
+            done
+        fi
+        echo -e "  ${amarelo}[ ${CAT_ID[$i]} ]${reset} ${branco}${CAT_NAME[$i]}${reset}  $existe"
+    done
+    echo ""
+    echo -e "\e[97mDigite os números separados por espaço (ex: ${amarelo}1 3${reset}\e[97m) ou ${amarelo}all${reset}\e[97m para todos:\e[0m"
+    read -p "> " escolha
+    echo ""
+
+    if [ -z "$escolha" ]; then
+        echo -e "\e[33mNenhuma seleção. Cancelado.\e[0m"
+        sleep 2
+        return 0
+    fi
+
+    ## Expande "all"
+    if [ "$escolha" = "all" ] || [ "$escolha" = "ALL" ]; then
+        escolha="1 2 3 4"
+    fi
+
+    ## Valida e monta lista de selecionados
+    local -a SEL_IDX=()
+    local n
+    for n in $escolha; do
+        case "$n" in
+            1|2|3|4) SEL_IDX+=("$((n-1))") ;;
+            *) echo -e "\e[31mOpção inválida ignorada: $n\e[0m" ;;
+        esac
+    done
+
+    if [ "${#SEL_IDX[@]}" -eq 0 ]; then
+        echo -e "\e[33mNenhuma seleção válida. Cancelado.\e[0m"
+        sleep 2
+        return 0
+    fi
+
+    echo -e "\e[97mSerão removidas as seguintes stacks e seus volumes:\e[0m"
+    for i in "${SEL_IDX[@]}"; do
+        local stack="${CAT_STACK[$i]}${sufixo:+_$sufixo}"
+        echo -e "  \e[31m• ${CAT_NAME[$i]}${reset} \e[90m($stack)${reset}"
+    done
+    echo ""
+    echo -e "\e[31m⚠  TODOS OS DADOS dessas aplicações serão PERDIDOS.\e[0m"
+    echo ""
+    read -p "Confirma? Digite 'RESET-ALL' para prosseguir: " confirma
+    if [ "$confirma" != "RESET-ALL" ]; then
+        echo ""
+        echo -e "\e[33mOperação cancelada.\e[0m"
+        sleep 2
+        return 0
+    fi
+
+    ## Pergunta se quer reinstalar após limpar
+    echo ""
+    read -p "Reinstalar as ferramentas após a limpeza? (Y/N): " reinstall_after
+
+    ## Executa limpeza
+    local ok_count=0
+    local fail_count=0
+    for i in "${SEL_IDX[@]}"; do
+        local stack="${CAT_STACK[$i]}${sufixo:+_$sufixo}"
+        local vols=""
+        local v
+        for v in ${CAT_VOLS[$i]}; do
+            vols="$vols ${stack}${v}"
+        done
+        echo ""
+        echo -e "\e[36m━━━ ${CAT_NAME[$i]} ━━━\e[0m"
+        ## Reaproveita _reset_stack_volumes mas pulando o prompt — então removemos diretamente
+        echo -e "\e[33m• Removendo stack '$stack'...\e[0m"
+        docker stack rm "$stack" >/dev/null 2>&1
+        for n in $(seq 1 60); do
+            local running
+            running=$(docker service ls --filter "name=${stack}_" -q 2>/dev/null | wc -l)
+            [ "$running" -eq 0 ] && break
+            sleep 2
+        done
+        sleep 5
+        docker ps -a --filter "name=${stack}" -q | xargs -r docker rm -f >/dev/null 2>&1
+
+        local stack_ok=1
+        for v in $vols; do
+            if docker volume inspect "$v" >/dev/null 2>&1; then
+                if docker volume rm "$v" >/dev/null 2>&1; then
+                    echo -e "\e[32m   ✓ $v removido\e[0m"
+                else
+                    sleep 5
+                    if docker volume rm "$v" >/dev/null 2>&1; then
+                        echo -e "\e[32m   ✓ $v removido (2ª tentativa)\e[0m"
+                    else
+                        echo -e "\e[31m   ✗ Falha ao remover $v\e[0m"
+                        stack_ok=0
+                    fi
+                fi
+            else
+                echo -e "\e[90m   - $v não existe (ok)\e[0m"
+            fi
+        done
+
+        if [ "$stack_ok" -eq 1 ]; then
+            ok_count=$((ok_count+1))
+        else
+            fail_count=$((fail_count+1))
+        fi
+    done
+
+    echo ""
+    echo -e "\e[33m═══════════════════════════════════════════════════════════════\e[0m"
+    echo -e "\e[32m✓ $ok_count limpeza(s) concluída(s)\e[0m  \e[31m✗ $fail_count falha(s)\e[0m"
+    echo -e "\e[33m═══════════════════════════════════════════════════════════════\e[0m"
+
+    ## Reinstalação opcional
+    if [ "$reinstall_after" = "Y" ] || [ "$reinstall_after" = "y" ]; then
+        echo ""
+        echo -e "\e[33mIniciando reinstalações...\e[0m"
+        sleep 2
+        for i in "${SEL_IDX[@]}"; do
+            echo ""
+            echo -e "\e[36m━━━ Reinstalando ${CAT_NAME[$i]} ━━━\e[0m"
+            sleep 1
+            case "${CAT_STACK[$i]}" in
+                whaticket) ferramenta_whaticket "$sufixo" ;;
+                chatwoot)  ferramenta_chatwoot  "$sufixo" ;;
+                evolution) ferramenta_evolution "$sufixo" ;;
+                n8n)       ferramenta_n8n       "$sufixo" ;;
+            esac
+        done
+    else
+        echo ""
+        echo -e "\e[97mPara reinstalar depois, use o menu normalmente (números 23, 2, 3, 6).\e[0m"
+    fi
+}
+
+ferramenta_whaticket_reinstalar() {
+
+    local sufixo="$1"
+    local stack="whaticket${sufixo:+_$sufixo}"
+    local vols="${stack}_mysql ${stack}_redis"
+    if _reset_stack_volumes "WHATICKET" "$stack" "$vols"; then
+        ferramenta_whaticket "$sufixo"
+    fi
+
+}
+
 ferramenta_whaticket() {
 
 ## Verifica os recursos
@@ -6261,6 +6545,52 @@ telemetria Whaticket iniciado
 ## Ativa a função dados para pegar os dados da vps
 dados
 
+## Detecta volumes antigos do Whaticket (causa Access denied no MySQL após reinstalação)
+vol_mysql_old="whaticket${1:+_$1}_mysql"
+vol_redis_old="whaticket${1:+_$1}_redis"
+stack_old="whaticket${1:+_$1}"
+volumes_existentes=""
+docker volume inspect "$vol_mysql_old" >/dev/null 2>&1 && volumes_existentes="$volumes_existentes $vol_mysql_old"
+docker volume inspect "$vol_redis_old" >/dev/null 2>&1 && volumes_existentes="$volumes_existentes $vol_redis_old"
+
+if [ -n "$volumes_existentes" ]; then
+    echo ""
+    echo -e "\e[33m⚠  Detectados volumes antigos do Whaticket:\e[0m"
+    for v in $volumes_existentes; do echo -e "\e[97m   - $v\e[0m"; done
+    echo ""
+    echo -e "\e[33mEsses volumes contêm a senha do MySQL gerada na instalação anterior.\e[0m"
+    echo -e "\e[33mSe você reinstalar sem removê-los, o backend dará 'Access denied for user whaticket'.\e[0m"
+    echo ""
+    read -p "Remover volumes antigos e reinstalar do zero? (Y/N): " limpar_vols
+    if [ "$limpar_vols" = "Y" ] || [ "$limpar_vols" = "y" ]; then
+        echo ""
+        echo -e "\e[33mRemovendo stack e volumes antigos...\e[0m"
+        docker stack rm "$stack_old" >/dev/null 2>&1
+        ## Aguarda Swarm liberar os volumes (services precisam sumir antes)
+        for i in $(seq 1 30); do
+            running=$(docker service ls --filter "name=${stack_old}_" -q | wc -l)
+            [ "$running" -eq 0 ] && break
+            sleep 2
+        done
+        sleep 5
+        for v in $volumes_existentes; do
+            if docker volume rm "$v" >/dev/null 2>&1; then
+                echo -e "\e[32m   ✓ $v removido\e[0m"
+            else
+                echo -e "\e[31m   ✗ Falha ao remover $v (pode estar em uso). Tente: docker volume rm $v\e[0m"
+            fi
+        done
+        echo ""
+    else
+        echo ""
+        echo -e "\e[31m⚠  Mantendo volumes antigos. Se a instalação falhar com 'Access denied', rode:\e[0m"
+        echo -e "\e[97m   docker stack rm $stack_old && docker volume rm$volumes_existentes\e[0m"
+        echo ""
+        sleep 3
+    fi
+fi
+
+
 ## Gera senhas aleatórias para MySQL e JWT
 senha_mysql_whaticket=$(openssl rand -hex 16)
 jwt_secret_whaticket=$(openssl rand -hex 32)
@@ -6329,7 +6659,7 @@ services:
       - BACKEND_URL=https://$url_whaticket_back
       - FRONTEND_URL=https://$url_whaticket_front
       - PROXY_PORT=443
-      - PORT=8080
+      - PORT=3000
       - DB_DIALECT=mysql
       - DB_HOST=whaticket${1:+_$1}_mysql
       - DB_PORT=3306
@@ -6344,6 +6674,7 @@ services:
       - USER_LIMIT=10000
       - CONNECTIONS_LIMIT=100000
       - CLOSED_SEND_BY_ME=true
+      - CHROME_ARGS=--no-sandbox --disable-setuid-sandbox
       - TZ=America/Sao_Paulo
     deploy:
       mode: replicated
@@ -6351,6 +6682,11 @@ services:
       placement:
         constraints:
           - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
       resources:
         limits:
           cpus: "1"
@@ -6362,7 +6698,7 @@ services:
         - traefik.http.routers.whaticket${1:+_$1}_backend.tls.certresolver=letsencryptresolver
         - traefik.http.routers.whaticket${1:+_$1}_backend.priority=1
         - traefik.http.routers.whaticket${1:+_$1}_backend.service=whaticket${1:+_$1}_backend
-        - traefik.http.services.whaticket${1:+_$1}_backend.loadbalancer.server.port=8080
+        - traefik.http.services.whaticket${1:+_$1}_backend.loadbalancer.server.port=3000
         - traefik.http.services.whaticket${1:+_$1}_backend.loadbalancer.passHostHeader=true
 
 ## --------------------------- WHATICKET --------------------------- ##
@@ -6372,13 +6708,11 @@ services:
     networks:
       - $nome_rede_interna
     environment:
-      - PORT=3000
-      - URL_BACKEND=https://$url_whaticket_back
-      - URL_FRONTEND=https://$url_whaticket_front
-      - REACT_APP_BACKEND_URL=https://$url_whaticket_back
-      - REACT_APP_FRONTEND_URL=https://$url_whaticket_front
-      - BACKEND_URL=https://$url_whaticket_back
-      - FRONTEND_URL=https://$url_whaticket_front
+      - URL_BACKEND=whaticket${1:+_$1}_backend:3000
+      - URL_FRONTEND=$url_whaticket_front
+      - REACT_APP_BACKEND_URL=https://$url_whaticket_back/
+      - BACKEND_SERVER_NAME=$url_whaticket_back
+      - FRONTEND_SERVER_NAME=$url_whaticket_front
       - TZ=America/Sao_Paulo
     deploy:
       mode: replicated
@@ -6389,7 +6723,7 @@ services:
       restart_policy:
         condition: on-failure
         delay: 10s
-        max_attempts: 3
+        max_attempts: 5
         window: 120s
       resources:
         limits:
@@ -6402,7 +6736,7 @@ services:
         - traefik.http.routers.whaticket${1:+_$1}_frontend.tls.certresolver=letsencryptresolver
         - traefik.http.routers.whaticket${1:+_$1}_frontend.priority=1
         - traefik.http.routers.whaticket${1:+_$1}_frontend.service=whaticket${1:+_$1}_frontend
-        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.server.port=3000
+        - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.server.port=80
         - traefik.http.services.whaticket${1:+_$1}_frontend.loadbalancer.passHostHeader=true
 
 ## --------------------------- WHATICKET --------------------------- ##
@@ -6447,26 +6781,43 @@ sleep 1
 
 wait_stack whaticket${1:+_$1}_whaticket${1:+_$1}_mysql whaticket${1:+_$1}_whaticket${1:+_$1}_redis whaticket${1:+_$1}_whaticket${1:+_$1}_backend whaticket${1:+_$1}_whaticket${1:+_$1}_frontend
 
-## Validação pós-deploy do frontend (detecta loop de reinício)
+## Validação pós-deploy do frontend e backend (detecta loop de reinício / Rejected / Failed)
 front_service_name="whaticket${1:+_$1}_whaticket${1:+_$1}_frontend"
+back_service_name="whaticket${1:+_$1}_whaticket${1:+_$1}_backend"
 echo ""
-echo -e "\e[33mAguardando 60s para validar estabilidade do frontend...\e[0m"
+echo -e "\e[33mAguardando 60s para validar estabilidade do frontend e backend...\e[0m"
 sleep 60
-front_failed=$(docker service ps "$front_service_name" --no-trunc --format '{{.CurrentState}}' 2>/dev/null | grep -cE 'Rejected|Failed')
-front_running=$(docker service ps "$front_service_name" --no-trunc --format '{{.CurrentState}}' 2>/dev/null | grep -c 'Running')
-if [ "$front_running" -eq 0 ] || [ "$front_failed" -ge 3 ]; then
-    echo ""
-    echo -e "\e[31m❌ Frontend do Whaticket falhou após múltiplas tentativas.\e[0m"
-    echo -e "\e[31m   Verifique os logs com:\e[0m"
-    echo -e "\e[97m     docker service logs $front_service_name --tail 50 --no-trunc\e[0m"
-    echo -e "\e[31m   Causas comuns:\e[0m"
-    echo -e "\e[97m     1) DNS de $url_whaticket_front não aponta para esta VPS\e[0m"
-    echo -e "\e[97m     2) Memória insuficiente (mínimo recomendado: 4GB RAM)\e[0m"
-    echo -e "\e[97m     3) Imagem ghcr.io/canove/whaticket-community-frontend:master indisponível\e[0m"
-    echo ""
-else
-    echo -e "\e[32m✓ Frontend do Whaticket estável.\e[0m"
-fi
+
+check_service_health() {
+    local svc="$1"
+    local label="$2"
+    local states
+    states=$(docker service ps "$svc" --no-trunc --format '{{.CurrentState}} | {{.Error}}' 2>/dev/null)
+    local running failed
+    running=$(echo "$states" | grep -c 'Running')
+    failed=$(echo "$states" | grep -cE 'Rejected|Failed|Shutdown')
+    if [ "$running" -eq 0 ] || [ "$failed" -ge 3 ]; then
+        echo ""
+        echo -e "\e[31m❌ $label do Whaticket falhou (sem replica em Running ou múltiplos Rejected/Failed/Shutdown).\e[0m"
+        echo -e "\e[31m   Diagnóstico:\e[0m"
+        echo -e "\e[97m     docker service logs $svc --tail 100 --no-trunc\e[0m"
+        echo -e "\e[97m     docker service ps $svc --no-trunc\e[0m"
+        echo -e "\e[31m   Causas comuns ($label):\e[0m"
+        echo -e "\e[97m     1) DNS não aponta para esta VPS (frontend e backend)\e[0m"
+        echo -e "\e[97m     2) RAM insuficiente — Whaticket exige 4GB mínimo\e[0m"
+        echo -e "\e[97m     3) URL_BACKEND interno errado (deve ser nome do serviço:porta interna)\e[0m"
+        echo -e "\e[97m     4) REACT_APP_BACKEND_URL sem barra final\e[0m"
+        echo -e "\e[97m     5) BACKEND_SERVER_NAME / FRONTEND_SERVER_NAME ausentes\e[0m"
+        echo ""
+        return 1
+    else
+        echo -e "\e[32m✓ $label do Whaticket estável.\e[0m"
+        return 0
+    fi
+}
+
+check_service_health "$back_service_name" "Backend"
+check_service_health "$front_service_name" "Frontend"
 
 ## Mensagem de Passo
 echo -e "\e[97m• MIGRANDO BANCO DE DADOS E CRIANDO USUÁRIO ADMIN \e[33m[5/5]\e[0m"
@@ -45024,6 +45375,65 @@ while true; do
             fi
             ;;
 
+        23r|whaticket-reset|WHATICKET-RESET|reinstalar-whaticket)
+
+            if verificar_docker_e_portainer_traefik; then
+                STACK_NAME="whaticket${opcao2:+_$opcao2}"
+                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
+                    ferramenta_whaticket_reinstalar "$opcao2"
+                else
+                    APP_ORION="ferramenta_whaticket_reinstalar"
+                    verificar_arquivo
+                fi
+            fi
+            ;;
+
+        chatwoot-reset|CHATWOOT-RESET|reinstalar-chatwoot)
+            if verificar_docker_e_portainer_traefik; then
+                STACK_NAME="chatwoot${opcao2:+_$opcao2}"
+                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
+                    ferramenta_chatwoot_reinstalar "$opcao2"
+                else
+                    APP_ORION="ferramenta_chatwoot_reinstalar"
+                    verificar_arquivo
+                fi
+            fi
+            ;;
+
+        evolution-reset|EVOLUTION-RESET|reinstalar-evolution|evo-reset)
+            if verificar_docker_e_portainer_traefik; then
+                STACK_NAME="evolution${opcao2:+_$opcao2}"
+                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
+                    ferramenta_evolution_reinstalar "$opcao2"
+                else
+                    APP_ORION="ferramenta_evolution_reinstalar"
+                    verificar_arquivo
+                fi
+            fi
+            ;;
+
+        reset-all|RESET-ALL|reinstalar-tudo)
+            if verificar_docker_e_portainer_traefik; then
+                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
+                    ferramenta_reset_all "$opcao2"
+                else
+                    APP_ORION="ferramenta_reset_all"
+                    verificar_arquivo
+                fi
+            fi
+            ;;
+
+        n8n-reset|N8N-RESET|reinstalar-n8n)
+            if verificar_docker_e_portainer_traefik; then
+                STACK_NAME="n8n${opcao2:+_$opcao2}"
+                if grep -q "Token: .\+" /root/dados_vps/dados_portainer; then
+                    ferramenta_n8n_reinstalar "$opcao2"
+                else
+                    APP_ORION="ferramenta_n8n_reinstalar"
+                    verificar_arquivo
+                fi
+            fi
+            ;;
         2|02|chatwoot|CHATWOOT)
 
             verificar_stack "chatwoot${opcao2:+_$opcao2}" && continue || echo ""
