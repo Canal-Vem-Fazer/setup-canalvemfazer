@@ -6416,14 +6416,18 @@ _whaticket_verificar() {
     fi
 
     ## 2) Backend respondendo HTTPS
+    ## Testamos POST em /auth/login: backend vivo retorna 400/401/422 (validação).
+    ## 404/5xx indica problema de roteamento Traefik / cert / DNS.
     if [ -n "$back_url" ]; then
         local code
-        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "https://$back_url/auth/refresh_token" 2>/dev/null)
-        if echo "$code" | grep -qE '^(200|400|401|403)$'; then
-            echo -e "  [\e[32m OK \e[0m] Backend HTTPS respondendo (https://$back_url → $code)"
+        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+            -X POST -H "Content-Type: application/json" -d '{}' \
+            "https://$back_url/auth/login" 2>/dev/null)
+        if echo "$code" | grep -qE '^(200|400|401|403|422)$'; then
+            echo -e "  [\e[32m OK \e[0m] Backend HTTPS respondendo (POST /auth/login → $code)"
         else
             echo -e "  [\e[31mFAIL\e[0m] Backend HTTPS NÃO respondeu corretamente (code=$code)"
-            echo -e "          Verifique DNS de $back_url apontando para a VPS e cert do Traefik."
+            echo -e "          Verifique DNS de $back_url, cert do Traefik e logs do whaticket_backend."
             falhas=$((falhas+1))
         fi
     fi
