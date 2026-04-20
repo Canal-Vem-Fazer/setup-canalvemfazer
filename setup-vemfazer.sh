@@ -2243,7 +2243,7 @@ menu_instalador_pg_1(){
     echo -e "${amarelo}[ 00 ]${reset} - ${branco}Testar SMTP                            ${verde}| ${reset}  ${verde}--- AUTOMAÇÃO ---${reset}"
     echo -e "${amarelo}[ 01 ]${reset} - ${branco}Traefik & Portainer                    ${verde}| ${reset}  ${amarelo}[ 10 ]${reset} - ${branco}N8N${reset}"
     echo -e ""                                                                         
-    echo -e "${verde}--- CHAT & WHATSAPP ---${reset}                                    ${verde}| ${reset}  ${amarelo}[ 11 ]${reset} - ${branco}Typebot${reset}"
+    echo -e "${verde}--- CHAT & WHATSAPP ---${reset}                                ${verde}| ${reset}  ${amarelo}[ 11 ]${reset} - ${branco}Typebot${reset}"
     echo -e "${amarelo}[ 02 ]${reset} - ${branco}Chatwoot                               ${verde}| ${reset}  ${amarelo}[ 12 ]${reset} - ${branco}Mautic${reset}"
     echo -e "${amarelo}[ 03 ]${reset} - ${branco}Evolution API                          ${verde}| ${reset}  ${amarelo}[ 13 ]${reset} - ${branco}ActivePieces${reset}"
     echo -e "${amarelo}[ 04 ]${reset} - ${branco}Evolution GO                           ${verde}| ${reset}"
